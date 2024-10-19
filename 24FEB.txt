@@ -1,0 +1,9 @@
+/eos/cms/store/group/dpg_hcal/comm_hcal/Jyoti/13p6TeV/2024/EraF/EGamma0_UnCorr/EGamma0_40to60_v1.root
+/eos/cms/store/group/dpg_hcal/comm_hcal/Jyoti/13p6TeV/2024/EraF/EGamma0_UnCorr/EGamma0_40to60_v2.root
+/eos/cms/store/group/dpg_hcal/comm_hcal/Jyoti/13p6TeV/2024/EraF/EGamma0_UnCorr/EGamma0_40to60_v3.root
+/eos/cms/store/group/dpg_hcal/comm_hcal/Jyoti/13p6TeV/2024/EraF/EGamma0_UnCorr/EGamma0_40to60_v4.root
+/eos/cms/store/group/dpg_hcal/comm_hcal/Jyoti/13p6TeV/2024/EraF/EGamma0_UnCorr/EGamma0_40to60_v5.root
+/eos/cms/store/group/dpg_hcal/comm_hcal/Jyoti/13p6TeV/2024/EraF/EGamma1_UnCorr/EGamma1_40to60_v1.root
+/eos/cms/store/group/dpg_hcal/comm_hcal/Jyoti/13p6TeV/2024/EraF/EGamma1_UnCorr/EGamma1_40to60_v2.root
+/eos/cms/store/group/dpg_hcal/comm_hcal/Jyoti/13p6TeV/2024/EraF/EGamma1_UnCorr/EGamma1_40to60_v3.root
+/eos/cms/store/group/dpg_hcal/comm_hcal/Jyoti/13p6TeV/2024/EraF/EGamma1_UnCorr/EGamma1_40to60_v4.root

@@ -1,0 +1,325 @@
+#include "TFile.h"
+#include "TH1D.h"
+#include "TH2D.h"
+#include "TH3D.h"
+#include "TProfile.h"
+#include "TProfile2D.h"
+#include "TProfile3D.h"
+#include "TVectorD.h"
+#include "TMatrixD.h"
+
+#include "tdrstyle_mod22.C"
+
+#include <iostream>
+
+void drawIsoTracks(string mode);
+
+void drawIsoTrack() {
+  drawIsoTracks("_even");
+  drawIsoTracks("_odd");
+  drawIsoTracks("");
+} // drawIsoTrack
+
+void drawIsoTracks(string mode) {
+
+  cout << "Running drawIsoTrack(\""<<mode<<"\")..." << endl << flush;
+  
+  TDirectory *curdir = gDirectory;
+  setTDRStyle();
+
+  TFile *f = new TFile("IsoTrack.root","READ");
+  //TFile *f = new TFile("IsoTrack_lxplus_v4.root","READ");
+  //TFile *f = new TFile("IsoTrack_lxplus_v3_odd.root","READ");
+  assert(f && !f->IsZombie());
+  curdir->cd();
+
+  cout << "Read inputs from " << f->GetName() << endl << flush;
+  
+  // Some quick plotting for sanity checks
+  //TH2D *h2 = (TH2D*)f->Get("h2c"); assert(h2);
+  //h2->Draw("COLZ");
+  //h2->GetYaxis()->SetRangeUser(0,2);
+  //double ntrk = h2->Integral();
+
+  const char *cm = mode.c_str();
+  TProfile *p = (TProfile*)f->Get(Form("pc%s",cm));
+  TProfile2D *p2 = (TProfile2D*)f->Get(Form("p2c%s",cm));
+  TProfile3D *p3 = (TProfile3D*)f->Get(Form("p3c%s",cm));
+  assert(p);
+  assert(p2);
+  assert(p3);
+
+  cout << "Inverting depth-independent corrections" << endl << flush;
+  
+  TH1D *h = p->ProjectionX(Form("h%s",cm));
+  // Reverse to get correction factor
+  for (int i = 1; i != h->GetNbinsX()+1; ++i) {
+    if (h->GetBinContent(i)!=0) {
+      double k = h->GetBinContent(i);
+      h->SetBinContent(i, 1./k);
+      h->SetBinError(i, h->GetBinError(i)/k);
+    }
+  }
+
+  // Calculate corrections per depth
+  cout << "Calculating depth-dependent corrections" << endl << flush;
+    
+  const int ndepth = 10;
+  int color[ndepth] =
+    {kBlack, kRed, kGreen+2, kBlue, kMagenta+1,
+     kOrange+1,kCyan+2,kGray+2, 1,1};
+  int marker[ndepth] =
+    {1, kOpenTriangleDown, kOpenSquare, kOpenCircle, kOpenTriangleUp,
+     kOpenStar,kOpenDiamond,kOpenCross, 1,1};
+  //int size[ndepth]
+  vector<TH1D*> vhd(10,0);
+  vector<TH1D*> vhdf(10,0);
+  vector<TH1D*> vhrms(10,0);
+  vector<TH1D*> vhmean(10,0);
+  for (int ieta = 1; ieta != h->GetNbinsX()+1; ++ieta) {
+    if (h->GetBinContent(ieta)!=0) {
+      for (int i = 0; i != ndepth; ++i) { // loop depths (include ECAL: i==0)
+
+	if (vhd[i]==0) {
+	  vhd[i] = p->ProjectionX(Form("hd_%d%s",i,cm));
+	  vhd[i]->Reset();
+	  vhdf[i] = p->ProjectionX(Form("hdf_%d%s",i,cm));
+	  vhdf[i]->Reset();
+	  vhrms[i] = p->ProjectionX(Form("hrms_%d%s",i,cm));
+	  vhrms[i]->Reset();
+	  vhmean[i] = p->ProjectionX(Form("hmean_%d%s",i,cm));
+	  vhmean[i]->Reset();
+	}
+	TH1D *hd = vhd[i];
+
+	// Optimization problem to solve to get the ideal correction per layer:
+	// minimize sum_i C_i^2*sigma_i^2 given sum_i C_i*mu_i = p,track
+	// using the method of Lagrange multipliers
+	// => C_i = p,track * ( (mu_i/sigma_i^2) / (sum_j mu_j^2/sigma_j^2) )
+	//
+	// Above neglects the covariances arising from shower fluctuations
+	// vec_c = 1/(vec_mu_T inv_mat_Sigma vec_mu) * inv_mat_Sigma vec_mu
+	
+	double mi = p2->GetBinContent(ieta, i+1); // Mean
+	p2->SetErrorOption("s"); // return RMS
+	double si = p2->GetBinError(ieta, i+1); // RMS
+	p2->SetErrorOption("e"); // return error on mean
+	double ei = p2->GetBinError(ieta, i+1); // error
+	double mi1si2 = (si!=0 ? mi/(si*si) : 0.);
+	double ei1si2 = (si!=0 ? ei/(si*si) : 0.);
+
+	double mj2sj2(0);
+	double vmj[ndepth], vsj2[ndepth], vej[ndepth];
+	for (int j = 1; j != ndepth; ++j) { // loop over depths again (exclude ECAL: j!=0)
+	  double mj = p2->GetBinContent(ieta, j+1); // Mean
+	  p2->SetErrorOption("s"); // return RMS
+	  double sj = p2->GetBinError(ieta, j+1); // RMS
+	  p2->SetErrorOption("e"); // return error on mean
+	  double ej = p2->GetBinError(ieta, j+1); // error
+	  mj2sj2 += (sj!=0 ? mj*mj/(sj*sj) : 0.);
+
+	  vmj[j] = mj;
+	  vsj2[j] = sj*sj;
+	  vej[j] = ej;
+	}
+	
+	// Full error propagation
+	// df_j = dC_i/dmu_j
+	// var = sum_i dfi*dfj*epsi*epsj
+	double df[ndepth];
+	double mi2 = mi*mi;
+	double si2 = si*si;
+	double si4 = si2*si2;
+	double err2(0);
+	for (int j = 1; j != ndepth; ++j) {
+	  double mj = vmj[j];
+	  double sj2 = vsj2[j];
+	  double ej = vej[j];
+	  if (si2==0||sj2==0||mj2sj2==0) df[j] = 0;
+	  else if (i==j) df[j] = (1./si2)/mj2sj2 - (2*mi2/si4)/(mj2sj2*mj2sj2);
+	  else           df[j] = -(mi/si2)*(2*mj/sj2)/(mj2sj2*mj2sj2);
+
+	  // ignoring off-diagonal covariances here
+	  err2 += df[j]*df[j]*ej*ej;
+	} // for depth2
+	
+	if (mj2sj2!=0) {
+	  double corr = mi1si2 / mj2sj2;
+	  hd->SetBinContent(ieta, corr);
+	  //double err = ei1si2 / mj2sj2; // earlier approximation
+	  double err = sqrt(fabs(err2)); // full calculation
+	  hd->SetBinError(ieta, err);
+
+	  vhrms[i]->SetBinContent(ieta, (mi!=0 ? si/mi * 0.5: 0.));
+	  vhmean[i]->SetBinContent(ieta, mi);
+	}
+	if (i==0 && p->GetBinContent(ieta)!=0) {
+	  double mu = p->GetBinContent(ieta);
+	  vhmean[0]->SetBinContent(ieta, mu/4.);
+	  p->SetErrorOption("s"); // return RMS
+	  vhrms[0]->SetBinContent(ieta, p->GetBinError(ieta)/mu);
+	  p->SetErrorOption("e"); // return error
+	}
+
+      } // for depth1
+
+      /////////////////////////////////////////////////////
+      // Account for covariances between depths properly //
+      /////////////////////////////////////////////////////
+      //double vc[ndepth];
+      double vm[ndepth];
+      double ve[ndepth];
+      double as[ndepth][ndepth];
+      double ae[ndepth][ndepth];
+
+      // Save means vec_mu and it's error
+      for (int i = 1; i != p2->GetNbinsY()+1; ++i) {
+      	vm[i-1] = p2->GetBinContent(ieta, i);
+	p2->SetErrorOption("e");
+	ve[i-1] = p2->GetBinError(ieta, i);
+      }
+	   
+      // Covariance matrix mat_Sigma for improved method
+      // (Draw this with drawCovariance.C)
+      p3->GetXaxis()->SetRange(ieta, ieta);
+      TProfile2D *p2p = (TProfile2D*)p3->Project3DProfile("yz");
+      p2p->SetName(Form("p3yz_%d%s",ieta,cm));
+      TH2D *h2 = p2p->ProjectionXY(); h2->Reset();
+      for (int i = 1; i != p2p->GetNbinsX()+1; ++i) {
+	for (int j = 1; j != p2p->GetNbinsY()+1; ++j) {
+	  double xy = p2p->GetBinContent(i, j);
+	  double xx = p2p->GetBinContent(i, i);
+	  double yy = p2p->GetBinContent(j, j);
+	  if (xx!=0 && yy!=0)
+	    h2->SetBinContent(i, j, xy/sqrt(xx*yy));
+	  else
+	    h2->SetBinContent(i, j, 0.);
+
+	  // Var[x] = 1/N * sum_i (xi - mu_x)^2 = E[x^2]-E[x]^2
+	  // Cov[x,y] = 1/N * sum_i (xi - mu_x) * (yi - mu_y)
+	  //          = E[xy] - E[x]*E[y]
+	  p2->SetErrorOption("s");
+	  double Ex = p2->GetBinContent(ieta, i);
+	  double Ey = p2->GetBinContent(ieta, j);
+	  double Exy = p2p->GetBinContent(i, j);
+	  as[i-1][j-1] = Exy - Ex*Ey;
+	} // for j
+      } // for i
+
+      // Set vector length to active depths and exclude ECAL
+      int ndepth2 = 4; //
+      int jeta = p2->GetXaxis()->GetBinCenter(ieta);
+      if (fabs(jeta)==15) ndepth2 = 5;
+      if (fabs(jeta)>=16) ndepth2 = 6;
+      if (fabs(jeta)>=23) ndepth2 = 7;
+      TVectorD vec_c(ndepth2);
+      TVectorD vec_mu(ndepth2);
+      TMatrixD mat_Sigma(ndepth2, ndepth2);
+      for (int i = 0; i != ndepth2; ++i) {
+	vec_mu[i] = vm[i+1]; // exclude ECAL (+1)
+	for (int j = 0; j != ndepth2; ++j) {
+	  mat_Sigma[i][j] = as[i+1][j+1]; // exclude ECAL (+1)
+	  //if (i!=j) mat_Sigma[i][j] = 0; // diagonal case as sanity check
+	} // for j
+      } // for i
+      TMatrixD inv_mat_Sigma = mat_Sigma;
+      inv_mat_Sigma.Invert(); // In-place inversion
+      // Check if inversion succeeded
+      if (inv_mat_Sigma.IsValid()) {
+	// Calculate corrections using:
+	// vec_c = 1/(vec_mu_T inv_mat_Sigma vec_mu) * inv_mat_Sigma vec_mu
+	double muT_invSigma_mu = vec_mu * (inv_mat_Sigma * vec_mu);
+	TVectorD invSigma_mu = inv_mat_Sigma * vec_mu;
+	vec_c = (1. / muT_invSigma_mu) * invSigma_mu;
+
+	// Save corrections
+	for (int i = 0; i != ndepth2; ++i) {
+	  TH1D *hd = vhdf[i+1];
+	  hd->SetBinContent(ieta, vec_c[i]);
+	}
+
+	// To-do: propagate uncertainties
+      }
+      else {
+	cout << "Matrix inversion failed for ieta = " << ieta << endl;
+      }
+
+    } // non-empty bin
+  } // for ieta
+
+  cout << "Making plots of corrections factors" << endl << flush;
+
+  TH1D *h_1 = tdrHist(Form("h_1%s",cm),"Correction Factor",0.15,2.7,
+		      "i#eta",-29,29);
+  lumi_136TeV = "2024F EGamma";
+  extraText = "Private";
+  TCanvas *c1 = tdrCanvas(Form("c1%s",cm),h_1,8,11,kRectangular);
+
+  TLine *l = new TLine();
+  l->SetLineStyle(kDashed);
+  l->SetLineColor(kBlue);
+  //l->DrawLine(-25,1,25,1);
+  l->DrawLine(-29,1,29,1);
+  l->SetLineStyle(kDotted);
+  l->SetLineColor(kGray+1);
+  double y1 = h_1->GetMinimum();
+  double y2 = h_1->GetMaximum();
+  l->DrawLine(-15.5,y1,-15.5,y2);
+  l->DrawLine(+15.5,y1,+15.5,y2);
+  l->SetLineColor(kGray+1);
+  l->DrawLine(-17.5,y1,-17.5,y2);
+  l->DrawLine(+17.5,y1,+17.5,y2);
+
+  TLatex *tex = new TLatex();
+  tex->SetNDC(); tex->SetTextSize(0.045);
+
+  TLegend *leg = tdrLeg(0.40,0.90-5*0.05,0.65,0.90);
+  TLegend *leg2 = tdrLeg(0.40,0.15,0.65,0.15+3*0.05);
+  
+  leg->AddEntry(h,"Depth independent","PLE");
+  for (int i = 1; i != 8; ++i) {
+    TH1D *hd = vhdf[i]; // vhd[i]
+    // Compare to free depths: https://indico.cern.ch/event/1424547/contributions/5991794/attachments/2872957/5030614/IsoTrackN156.pdf?#page=25
+    tdrDraw(hd,"Pz",marker[i],color[i], kSolid,-1,kNone,0, 0.8);
+    if (i<5) leg->AddEntry(hd,Form("DD depth %d",i),"PLE");
+    else     leg2->AddEntry(hd,Form("DD depth %d (HE)",i),"PLE");
+  }
+  
+  // Compare to single depth: https://indico.cern.ch/event/1460156/contributions/6147826/attachments/2935195/5155251/IsoTrackN163.pdf?#page=9
+  tdrDraw(h,"Pz",kFullCircle,kBlack, kSolid,-1,kNone,0, 0.8);
+
+  c1->SaveAs("pdf/IsoTrack_CorrFact.pdf");
+
+
+  TH1D *h_2 = tdrHist(Form("h_2%s",cm),"Mean and RMS/Mean",0.,1.5,
+		      "i#eta",-25,25);
+  lumi_136TeV = "2024F EGamma Depth Dependent";
+  extraText = "Private";
+  TCanvas *c2 = tdrCanvas(Form("c2%s",cm),h_2,8,11,kRectangular);
+
+  l->SetLineStyle(kDashed);
+  l->SetLineColor(kBlue);
+  l->DrawLine(-25,1,25,1);
+
+  for (int i = 0; i != 5; ++i) {
+    tdrDraw(vhmean[i],"Pz",kOpenSquare, color[i], kSolid,-1,kNone,0, 0.8);
+    tdrDraw(vhrms[i],"Pz",kFullCircle, color[i], kSolid,-1,kNone,0, 0.8);
+  }
+
+  c2->SaveAs("pdf/IsoTrack_RMSoMean.pdf");
+
+  // Store results for e.g. comparing even-odd cases or different eras
+  TFile *fout = new TFile(Form("CorrFact%s.root",cm),"RECREATE");
+  cout << "Storing results to " << fout->GetName() << endl << flush;
+  
+  h->Write("h_di");
+  for (int i = 0; i != ndepth; ++i) {
+    vhd[i]->Write(Form("h_dd_%d",i));
+  }
+  for (int i = 0; i != ndepth; ++i) {
+    vhdf[i]->Write(Form("hf_dd_%d",i));
+  }
+  fout->Close();
+
+  cout << "File closed, finished drawIsoTracks(\""<<mode<<"\").\n"<<endl<<flush;
+} // drawIsoTracks(mode)
