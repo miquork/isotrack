@@ -1,8 +1,10 @@
 #include "IsoTrack.h"
+#include "rebinProfiles.C"
 #include "drawIsoTrack.C"
 #include "drawCorrFact.C"
 #include "drawCovariance.C"
 // Forward declarations (dont' work here?)
+//void rebinProfiles();
 //void drawIsoTrack();
 //void drawCorrFact();
 //void drawCovariance();
@@ -35,20 +37,25 @@ void mk_IsoTrack() {
   }
 
   // Create IsoTrack.root output file for interactive analysis
-  IsoTrack it(c);
-  it.Loop();
+  //IsoTrack it(c);
+  //it.Loop();
 
-  // Quick plotting of IsoTrack.root
+  // Rebin ieta for more stable depths
+  gROOT->ProcessLine(".L rebinProfiles.C+g");
+  rebinProfiles();
+  
+  // Solve corrections, IsoTrack.root -> CorrFact*.root
   gROOT->ProcessLine(".! mkdir pdf");
-  gROOT->ProcessLine(".L drawIsoTrack.C");
+  gROOT->ProcessLine(".L drawIsoTrack.C+g");
   drawIsoTrack();
 
-  // Some more plots on correction factors (even/odd)
-  gROOT->ProcessLine(".L drawCorrFact.C");
+  // Even/odd tests of uncertainties for CorrFact*.root
+  gROOT->ProcessLine(".L drawCorrFact.C+g");
   drawCorrFact();
+  drawCorrFact("_wide");
 
-  // Control plots of depth covariance
+  // Control plots of depth covariance in IsoTrack.root
   gROOT->ProcessLine(".! mkdir pdf/drawCovariance");
-  gROOT->ProcessLine(".L drawCovariance.C");
+  gROOT->ProcessLine(".L drawCovariance.C+g");
   drawCovariance();
 } // mk_IsoTrack

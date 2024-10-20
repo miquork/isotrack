@@ -15,9 +15,15 @@
 void drawIsoTracks(string mode);
 
 void drawIsoTrack() {
+
+  drawIsoTracks("_even_wide");
+  drawIsoTracks("_odd_wide");
+  drawIsoTracks("_wide");
+
   drawIsoTracks("_even");
   drawIsoTracks("_odd");
   drawIsoTracks("");
+
 } // drawIsoTrack
 
 void drawIsoTracks(string mode) {
@@ -28,6 +34,7 @@ void drawIsoTracks(string mode) {
   setTDRStyle();
 
   TFile *f = new TFile("IsoTrack.root","READ");
+  //TFile *f = new TFile("IsoTrack_wide.root","READ");
   //TFile *f = new TFile("IsoTrack_lxplus_v4.root","READ");
   //TFile *f = new TFile("IsoTrack_lxplus_v3_odd.root","READ");
   assert(f && !f->IsZombie());
@@ -213,6 +220,7 @@ void drawIsoTracks(string mode) {
       if (fabs(jeta)>=16) ndepth2 = 6;
       if (fabs(jeta)>=23) ndepth2 = 7;
       TVectorD vec_c(ndepth2);
+      TVectorD vec_err(ndepth2);
       TVectorD vec_mu(ndepth2);
       TMatrixD mat_Sigma(ndepth2, ndepth2);
       for (int i = 0; i != ndepth2; ++i) {
@@ -222,6 +230,8 @@ void drawIsoTracks(string mode) {
 	  //if (i!=j) mat_Sigma[i][j] = 0; // diagonal case as sanity check
 	} // for j
       } // for i
+
+      // Core linear algebra calculations
       TMatrixD inv_mat_Sigma = mat_Sigma;
       inv_mat_Sigma.Invert(); // In-place inversion
       // Check if inversion succeeded
@@ -232,13 +242,24 @@ void drawIsoTracks(string mode) {
 	TVectorD invSigma_mu = inv_mat_Sigma * vec_mu;
 	vec_c = (1. / muT_invSigma_mu) * invSigma_mu;
 
-	// Save corrections
+	// Calculate the uncertainties for the corrections
+	// Jacobian is covInverse / muT_invSigma_mu
+	TMatrixD jacobian = inv_mat_Sigma;//covInverse;
+	jacobian *= (1.0 / muT_invSigma_mu);
+
+	// Propagate the uncertainties: vc_err = sqrt(J * covariances * J^T)
+	TMatrixD tempMatrix = jacobian * mat_Sigma * jacobian.T();
+	for (int i = 0; i != ndepth2; ++i) {
+	  vec_err[i] = std::sqrt(tempMatrix(i, i)) / muT_invSigma_mu;
+	}
+
+	// Save corrections and uncertainties
 	for (int i = 0; i != ndepth2; ++i) {
 	  TH1D *hd = vhdf[i+1];
 	  hd->SetBinContent(ieta, vec_c[i]);
+	  hd->SetBinError(ieta, vec_err[i]);
 	}
 
-	// To-do: propagate uncertainties
       }
       else {
 	cout << "Matrix inversion failed for ieta = " << ieta << endl;
@@ -288,9 +309,10 @@ void drawIsoTracks(string mode) {
   // Compare to single depth: https://indico.cern.ch/event/1460156/contributions/6147826/attachments/2935195/5155251/IsoTrackN163.pdf?#page=9
   tdrDraw(h,"Pz",kFullCircle,kBlack, kSolid,-1,kNone,0, 0.8);
 
-  c1->SaveAs("pdf/IsoTrack_CorrFact.pdf");
+  c1->SaveAs(Form("pdf/IsoTrack_CorrFact%s.pdf",cm));
 
 
+  // Loook at means and RMS per depth vs total
   TH1D *h_2 = tdrHist(Form("h_2%s",cm),"Mean and RMS/Mean",0.,1.5,
 		      "i#eta",-25,25);
   lumi_136TeV = "2024F EGamma Depth Dependent";
@@ -306,8 +328,9 @@ void drawIsoTracks(string mode) {
     tdrDraw(vhrms[i],"Pz",kFullCircle, color[i], kSolid,-1,kNone,0, 0.8);
   }
 
-  c2->SaveAs("pdf/IsoTrack_RMSoMean.pdf");
+  c2->SaveAs(Form("pdf/IsoTrack_RMSoMean%s.pdf",cm));
 
+  
   // Store results for e.g. comparing even-odd cases or different eras
   TFile *fout = new TFile(Form("CorrFact%s.root",cm),"RECREATE");
   cout << "Storing results to " << fout->GetName() << endl << flush;

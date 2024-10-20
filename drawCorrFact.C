@@ -4,16 +4,21 @@
 
 #include <iostream>
 
-void drawCorrFact() {
+void drawCorrFact(string mode = "") {
 
-  cout << "Running drawCorrFact()..." << endl << flush;
+  cout << "Running drawCorrFact(\""<<mode<<"\")..." << endl << flush;
   
   TDirectory *curdir = gDirectory;
   setTDRStyle();
-  
-  TFile *fe = new TFile("CorrFact_even.root","READ");
+
+  const char *cm = mode.c_str();
+  TFile *fe = new TFile(Form("CorrFact_even%s.root",cm),"READ");
+  //TFile *fe = new TFile("CorrFact_even.root","READ");
+  //TFile *fe = new TFile("CorrFact_even_wide.root","READ");
   assert(fe && !fe->IsZombie());
-  TFile *fo = new TFile("CorrFact_odd.root","READ");
+  TFile *fo = new TFile(Form("CorrFact_odd%s.root",cm),"READ");
+  //TFile *fo = new TFile("CorrFact_odd.root","READ");
+  //TFile *fo = new TFile("CorrFact_odd_wide.root","READ");
   assert(fo && !fo->IsZombie());
 
   cout << "Input files " << fe->GetName() << " and "
@@ -24,21 +29,22 @@ void drawCorrFact() {
   //TFile *fs = new TFile("../IsoTrackSunanda/uncX/MFitF.root","READ");
   //TFile *fs = new TFile("../IsoTrackSunanda/uncX/SFitC.root","READ");
   //TFile *fs = new TFile("../IsoTrackSunanda/uncX/SFitF.root","READ");
-  assert(fs && !fs->IsZombie());
+  //assert(fs && !fs->IsZombie());
 
   curdir->cd();
 
-  TH1D *h_1 = tdrHist("h_1dcf","CF_{odd} / CF_{even}",0.8,1.2,"i#eta",-29,29);
+  TH1D *h_1 = tdrHist(Form("h_1dcf%s",cm),"CF_{odd} / CF_{even}",0.8,1.2,
+		      "i#eta",-29,29);
   lumi_136TeV = "2024F EGamma";
   extraText = "Private";
-  TCanvas *c1 = tdrCanvas("c1_dcf",h_1,8,11,kRectangular);
+  TCanvas *c1 = tdrCanvas(Form("c1_dcf%s",cm),h_1,8,11,kRectangular);
 
   TLegend *leg = tdrLeg(0.40,0.90-5*0.05,0.65,0.90);
   TLegend *leg2 = tdrLeg(0.40,0.15,0.65,0.15+3*0.05);//4*0.05);
 
   TH1D *he = (TH1D*)fe->Get("h_di"); assert(he);
   TH1D *ho = (TH1D*)fo->Get("h_di"); assert(ho);
-  TH1 *hr = (TH1D*)ho->Clone("hr");
+  TH1 *hr = (TH1D*)ho->Clone(Form("hr%s",cm));
   hr->Divide(he);
 
   // Reference results from Sunanda
@@ -46,7 +52,7 @@ void drawCorrFact() {
   //TH1D *hs = (TH1D*)fs->Get("24F12EAM60Z3"); assert(hs);
   //TH1D *hs = (TH1D*)fs->Get("24F12CS60Z3"); assert(hs);
   //TH1D *hs = (TH1D*)fs->Get("24F12EAS60Z3"); assert(hs);
-  TH1D *hb = (TH1D*)he->Clone("hb");
+  TH1D *hb = (TH1D*)he->Clone(Form("hb%s",cm));
   hb->Add(ho);
   hb->Scale(0.5);
   //TH1 *hr2 = (TH1D*)hs->Clone("hr2");
@@ -94,9 +100,14 @@ void drawCorrFact() {
   
   // Get even+odd, do ratio, plot
   for (int i = 1; i != 8; ++i) {
+    /*
     TH1D *he = (TH1D*)fe->Get(Form("h_dd_%d",i)); assert(he);
     TH1D *ho = (TH1D*)fo->Get(Form("h_dd_%d",i)); assert(ho);
     TH1 *hr = (TH1D*)ho->Clone(Form("hr_dd_%d",i));
+    */
+    TH1D *he = (TH1D*)fe->Get(Form("hf_dd_%d",i)); assert(he);
+    TH1D *ho = (TH1D*)fo->Get(Form("hf_dd_%d",i)); assert(ho);
+    TH1 *hr = (TH1D*)ho->Clone(Form("hfr_dd_%d%s",i,cm));
     hr->Divide(he);
 
     tdrDraw(hr,"Pz",marker[i],color[i], kSolid,-1,kNone,0, 0.8);
@@ -112,7 +123,7 @@ void drawCorrFact() {
   //tdrDraw(hr2,"Pz",kOpenCircle,kBlack, kSolid,-1,kNone,0, 1.2);
   //hr2->SetLineWidth(2);
 
-  c1->SaveAs("pdf/IsoTrack_CFRatio.pdf");
+  c1->SaveAs(Form("pdf/IsoTrack_CFRatio%s.pdf",cm));
 
   cout << "Done with drawCorrFact()." << endl << flush;
   
