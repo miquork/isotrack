@@ -1,4 +1,6 @@
 //Purpose: draw covariance between energy measurements at different depths
+#ifndef __drawCovariance_C__
+#define __drawCovariance_C__
 #include "TFile.h"
 #include "TProfile3D.h"
 #include "TProfile2D.h"
@@ -87,4 +89,4 @@ void drawCovariances(int ieta) {
   c1->SaveAs(Form("pdf/drawCovariance/IsoTrack_Covariance_ieta%s%02d.pdf",
 		  (ieta>0 ? "p" : "m"), abs(ieta)));
 } // drawCovariance
-
+#endif

@@ -1,3 +1,6 @@
+// Purpose: solve HCAL corrections per depth and plot them
+#ifndef __drawIsoTrack_C__
+#define __drawIsoTrack_C__
 #include "TFile.h"
 #include "TH1D.h"
 #include "TH2D.h"
@@ -346,3 +349,4 @@ void drawIsoTracks(string mode) {
 
   cout << "File closed, finished drawIsoTracks(\""<<mode<<"\").\n"<<endl<<flush;
 } // drawIsoTracks(mode)
+#endif

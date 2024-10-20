@@ -37,8 +37,8 @@ void mk_IsoTrack() {
   }
 
   // Create IsoTrack.root output file for interactive analysis
-  //IsoTrack it(c);
-  //it.Loop();
+  IsoTrack it(c);
+  it.Loop();
 
   // Rebin ieta for more stable depths
   gROOT->ProcessLine(".L rebinProfiles.C+g");

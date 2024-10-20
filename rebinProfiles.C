@@ -1,5 +1,7 @@
 // Purpose: quick rebinning of ieta and depth to new histogram,
 //          also allowing to reduce profile range
+#ifndef __rebinProfiles_C__
+#define __rebinProfiles_C__
 #include <TFile.h>
 #include <TProfile.h>
 #include <TProfile2D.h>
@@ -255,6 +257,6 @@ void rebinProfile3DCustom(TProfile3D* p3, TProfile3D* p3_new) {
     } // for iy
   } // for ix
 } // rebinProfile3DCustom
-
+#endif
 
 

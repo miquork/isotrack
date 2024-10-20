@@ -1,4 +1,6 @@
 // Purpose: compare even and odd corrfact.root
+#ifndef __drawCorrFact_C__
+#define __drawCorrFact_C__
 #include "TFile.h"
 #include "tdrstyle_mod22.C"
 
@@ -128,3 +130,4 @@ void drawCorrFact(string mode = "") {
   cout << "Done with drawCorrFact()." << endl << flush;
   
 } // drawCorrFact
+#endif
