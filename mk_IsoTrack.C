@@ -18,7 +18,7 @@ void mk_IsoTrack() {
   string path = gSystem->pwd();
   cout << "Current path: " << path << endl << flush;
   //bool runLXPLUS = (path=="/afs/cern.ch/user/v/voutila/scratch0/IsoTrack");
-  bool runLXPLUS = TString(path.c_str()).Contains("/afs/cern.ch/user/");
+  bool runLXPLUS = TString(path.c_str()).Contains("/afs/cern.ch/");
   
   TChain *c = new TChain("hcalIsoTrackAnalyzer/CalibTree");
 
@@ -38,7 +38,7 @@ void mk_IsoTrack() {
 
   // Create IsoTrack.root output file for interactive analysis
   IsoTrack it(c);
-  it.Loop();
+  //it.Loop();
 
   // Rebin ieta for more stable depths
   gROOT->ProcessLine(".L rebinProfiles.C+g");
