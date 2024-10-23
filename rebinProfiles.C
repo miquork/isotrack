@@ -14,37 +14,47 @@ void rebinProfile2DCustom(TProfile2D* p2, TProfile2D* p2_new);
 void rebinProfile3DCustom(TProfile3D* p3, TProfile3D* p3_new);
 
 bool doAbsEta(false);
-void rebinProfiles() {
+void rebinProfiles(string mode = "wide",
+		   string era = "24CDEF", string version="") {
 
-  cout << "Calling rebinProfiles..." << endl << flush;
-  
-  TFile *f = new TFile("IsoTrack.root","READ");
+  cout << "Calling rebinProfiles(\""<<mode<<"\")..." << endl << flush;
+
+  const char *ce = era.c_str();
+  const char *cv = version.c_str();
+  TFile *f = new TFile(Form("IsoTrack_%s_%s.root",cv,ce),"READ");
   assert(f && !f->IsZombie());
 
-  TFile *fout = new TFile("IsoTrack.root","UPDATE");
+  TFile *fout = new TFile(Form("IsoTrack_%s_%s.root",cv,ce),"UPDATE");
   //TFile *fout = new TFile("IsoTrack_wide.root","UPDATE");
   assert(fout && !fout->IsZombie());
 
   cout << "Input file " << f->GetName() << endl << flush;
   cout << "Output file " << fout->GetName() << " (UPDATE)" << endl << flush;
-  
+
   // Define new ieta binning
-  double vieta[] =
+  double vieta_wide[] =
   //{-30.5, -28.5, -24.5, -19.5, -17.5, -15.5, -12.5, -6.5, -0.5,
   //0.5, 6.5, 12.5, 15.5, 17.5, 19.5, 24.5, 28.5, 30.5}; // v1
     {-30.5, -28.5, -24.5, -20.5, -17.5, -15.5, -12.5, -9.5, -6.5, -3.5, -0.5,
      0.5, 3.5, 6.5, 9.5, 12.5, 15.5, 17.5, 19.5, 24.5, 28.5, 30.5}; // v2,4
-  /*
+  const int nieta_wide = sizeof(vieta_wide)/sizeof(vieta_wide[0])-1;
+  double vieta_abs[]
     {-30.5, -29.5, -28.5, -27.5, -26.5, -25.5, -24.5, -23.5, -22.5, -21.5,
      -20.5, -19.5, -18.5, -17.5, -16.5, -15.5, -14.5, -13.5, -12.5, -11.5,
      -10.5, -9.5, -8.5, -7.5, -6.5, -5.5, -4.5, -3.5, -2.5, -1.5, -0.5,
      0.5, 1.5, 2.5, 3.5, 4.5, 5.5, 6.5, 7.5, 8.5, 9.5, 10.5,
      11.5, 12.5, 13.5, 14.5, 15.5, 16.5, 17.5, 18.5, 19.5, 20.5,
      21.5, 22.5, 23.5, 24.5, 25.5, 26.5, 27.5, 28.5, 29.5, 30.5}; // v3
-  */
+  const int nieta_abs = sizeof(vieta_abs)/sizeof(vieta_abs[0])-1;
   doAbsEta = true; // v3,4 (list -ieta also, but they will be empty
 
-  const int nieta = sizeof(vieta)/sizeof(vieta[0])-1;
+  const char *cm = mode.c_str();
+  double *vieta(0);
+  int nieta(0);
+  if (mode=="wide") { vieta = &(vieta_wide[0]); nieta = nieta_wide; }
+  if (mode=="abs")  { vieta = &(vieta_abs[0]);  nieta = nieta_abs; }
+  
+  //const int nieta = sizeof(vieta)/sizeof(vieta[0])-1;
 
   // Define new depth binning
   double vdepth[] =
@@ -56,10 +66,11 @@ void rebinProfiles() {
   p = (TProfile*)f->Get("pc"); assert(p);
   p_even = (TProfile*)f->Get("pc_even"); assert(p_even);
   p_odd = (TProfile*)f->Get("pc_odd"); assert(p_odd);
-  p_new = new TProfile("pc_wide",";ieta;(t_eHcal-ePU)/(t_p-eMIP) [0.15,1.85]",
+  p_new = new TProfile(Form("pc_%s",cm),
+		       ";ieta;(t_eHcal-ePU)/(t_p-eMIP) [0.15,1.85]",
   		       nieta, vieta);//61,-30.5,30.5);
-  p_even_new = (TProfile*)p_new->Clone("pc_even_wide");
-  p_odd_new = (TProfile*)p_new->Clone("pc_odd_wide");
+  p_even_new = (TProfile*)p_new->Clone(Form("pc_even_%s",cm));
+  p_odd_new = (TProfile*)p_new->Clone(Form("pc_odd_%s",cm));
   rebinProfileCustom(p, p_new);
   rebinProfileCustom(p_even, p_even_new);
   rebinProfileCustom(p_odd, p_odd_new);
@@ -69,11 +80,12 @@ void rebinProfiles() {
   p2 = (TProfile2D*)f->Get("p2c"); assert(p2);
   p2_even = (TProfile2D*)f->Get("p2c_even"); assert(p2_even);
   p2_odd = (TProfile2D*)f->Get("p2c_odd"); assert(p2_odd);
-  p2_new = new TProfile2D("p2c_wide",";ieta;depth;(t_eHcal-ePU)/(t_p-eMIP)"
+  p2_new = new TProfile2D(Form("p2c_%s",cm),
+			  ";ieta;depth;(t_eHcal-ePU)/(t_p-eMIP)"
 			  " [0.15,1.85]", //61,-30.5,30.5, 10,-0.5,9.5);
 			  nieta, vieta, ndepth, vdepth);
-  p2_even_new = (TProfile2D*)p2_new->Clone("p2c_even_wide");
-  p2_odd_new = (TProfile2D*)p2_new->Clone("p2c_odd_wide");
+  p2_even_new = (TProfile2D*)p2_new->Clone(Form("p2c_even_%s",cm));
+  p2_odd_new = (TProfile2D*)p2_new->Clone(Form("p2c_odd_%s",cm));
   rebinProfile2DCustom(p2, p2_new);
   rebinProfile2DCustom(p2_even, p2_even_new);
   rebinProfile2DCustom(p2_odd, p2_odd_new);
@@ -83,26 +95,26 @@ void rebinProfiles() {
   p3 = (TProfile3D*)f->Get("p3c"); assert(p3);
   p3_even = (TProfile3D*)f->Get("p3c_even"); assert(p3_even);
   p3_odd = (TProfile3D*)f->Get("p3c_odd"); assert(p3_odd);
-  p3_new = new TProfile3D("p3c_wide",";ieta;depth;depth;"
+  p3_new = new TProfile3D(Form("p3c_%s",cm),";ieta;depth;depth;"
 			  "(t_eHcal-ePU)/(t_p-eMIP) [0.15,1.85]",
 			  //61,-30.5,30.5, 10,-0.5,9.5, 10,-0.5,9.5);
 			  nieta, vieta, ndepth, vdepth, ndepth, vdepth);
-  p3_even_new = (TProfile3D*)p3_new->Clone("p3c_even_wide");
-  p3_odd_new = (TProfile3D*)p3_new->Clone("p3c_odd_wide");
+  p3_even_new = (TProfile3D*)p3_new->Clone(Form("p3c_even_%s",cm));
+  p3_odd_new = (TProfile3D*)p3_new->Clone(Form("p3c_odd_%s",cm));
   rebinProfile3DCustom(p3, p3_new);
   rebinProfile3DCustom(p3_even, p3_even_new);
   rebinProfile3DCustom(p3_odd, p3_odd_new);
 
   fout->cd();
-  p_new->Write("pc_wide", TObject::kOverwrite);
-  p_even_new->Write("pc_even_wide", TObject::kOverwrite);
-  p_odd_new->Write("pc_odd_wide", TObject::kOverwrite);
-  p2_new->Write("p2c_wide", TObject::kOverwrite);
-  p2_even_new->Write("p2c_even_wide", TObject::kOverwrite);
-  p2_odd_new->Write("p2c_odd_wide", TObject::kOverwrite);
-  p3_new->Write("p3c_wide", TObject::kOverwrite);
-  p3_even_new->Write("p3c_even_wide", TObject::kOverwrite);
-  p3_odd_new->Write("p3c_odd_wide", TObject::kOverwrite);
+  p_new->Write(Form("pc_%s",cm), TObject::kOverwrite);
+  p_even_new->Write(Form("pc_even_%s",cm), TObject::kOverwrite);
+  p_odd_new->Write(Form("pc_odd_%s",cm), TObject::kOverwrite);
+  p2_new->Write(Form("p2c_%s",cm), TObject::kOverwrite);
+  p2_even_new->Write(Form("p2c_even_%s",cm), TObject::kOverwrite);
+  p2_odd_new->Write(Form("p2c_odd_%s",cm), TObject::kOverwrite);
+  p3_new->Write(Form("p3c_%s",cm), TObject::kOverwrite);
+  p3_even_new->Write(Form("p3c_even_%s",cm), TObject::kOverwrite);
+  p3_odd_new->Write(Form("p3c_odd_%s",cm), TObject::kOverwrite);
   fout->Close();
 
   cout << "Finished rebinProfiles." << endl << flush;

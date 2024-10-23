@@ -10,31 +10,34 @@
 
 #include "tdrstyle_mod22.C"
 
-void drawCovariances(int ieta);
+void drawCovariances(int ieta, string era, string version);
 
-void drawCovariance(int ieta = 0) {
+void drawCovariance(int ieta = 0, string era="24F", string version="vX") {
 
-  cout << "Running drawCovariance("<<ieta<<")..." << endl << flush;
-
+  cout << "Running drawCovariance("<<ieta<<",\""<<era
+       << ",\""<<version<<"\")..."<<endl<<flush;
+  
   if (ieta==0) {
     for (int i = -27; i != +27+1; ++i) {
-      drawCovariances(i);
+      drawCovariances(i, era, version);
     }
   }
   else
-    drawCovariances(ieta);
+    drawCovariances(ieta, era, version);
 
   cout << "drawCovariance("<<ieta<<") finished.\n" << endl << flush;
 }
 
-void drawCovariances(int ieta) {
+void drawCovariances(int ieta, string era, string version) {
 
   //cout << "drawCovariances("<<ieta<<")" << endl << flush;
+  const char *ce = era.c_str();
+  const char *cv = version.c_str();
   
   TDirectory *curdir = gDirectory;
   setTDRStyle();
 
-  TFile *f = new TFile("IsoTrack.root","READ");
+  TFile *f = new TFile(Form("IsoTrack_%s_%s.root",cv,ce),"READ");
   //TFile *f = new TFile("IsoTrack_lxplus_v4.root","READ");
   assert(f && !f->IsZombie());
   curdir->cd();
@@ -62,7 +65,7 @@ void drawCovariances(int ieta) {
   } // for i
   
   TH1D *h_1 = tdrHist(Form("h_1_%d",ieta),"depth",-0.5,7.5,"depth",-0.5,7.5);
-  lumi_136TeV = "2024F EGamma";
+  lumi_136TeV = Form("20%s EGamma",ce);
   extraText = "Private";
   TCanvas *c1 = tdrCanvas(Form("c1_%d",ieta),h_1,8,11,kSquare);
   h_1->GetYaxis()->SetTitleOffset(0.8);
@@ -86,7 +89,8 @@ void drawCovariances(int ieta) {
   
   gPad->RedrawAxis();
   gPad->Update();
-  c1->SaveAs(Form("pdf/drawCovariance/IsoTrack_Covariance_ieta%s%02d.pdf",
-		  (ieta>0 ? "p" : "m"), abs(ieta)));
+  c1->SaveAs(Form("pdf/drawCovariance/%s_%s/IsoTrack_Covariance_"
+		  "ieta%s%02d_%s_%s.pdf", cv, ce,
+		  (ieta>0 ? "p" : "m"), abs(ieta), cv, ce));
 } // drawCovariance
 #endif

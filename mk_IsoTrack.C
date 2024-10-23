@@ -3,31 +3,38 @@
 #include "drawIsoTrack.C"
 #include "drawCorrFact.C"
 #include "drawCovariance.C"
+#include "hybridCorrFact.C"
 // Forward declarations (dont' work here?)
 //void rebinProfiles();
 //void drawIsoTrack();
 //void drawCorrFact();
 //void drawCovariance();
+//void hybridCorrFact();
 
 //R__LOAD_LIBRARY(IsoTrack.C+g)
 R__LOAD_LIBRARY(IsoTrack_C.so)
 
 
-void mk_IsoTrack() {
+void mk_IsoTrack(string era = "24CDEF", string version = "lxplus_v8") {
 
   string path = gSystem->pwd();
   cout << "Current path: " << path << endl << flush;
   //bool runLXPLUS = (path=="/afs/cern.ch/user/v/voutila/scratch0/IsoTrack");
   bool runLXPLUS = TString(path.c_str()).Contains("/afs/cern.ch/");
+
+  cout << "Era "<<era<<", version "<<version<<endl<<flush;
   
   TChain *c = new TChain("hcalIsoTrackAnalyzer/CalibTree");
 
+  const char *ce = era.c_str();
+  const char *cv = version.c_str();
+  
   if (runLXPLUS) {
     // Copy files to lxplus and back:
     // rsync -rutP *.C *.h 24FEB.txt voutila@lxplus.cern.ch:~/scratch0/IsoTrack/
     // rsync -rutP voutila@lxplus.cern.ch:~/scratch0/IsoTrack/IsoTrack.root ./IsoTrack_lxplus.root
     cout << "Running on lxplus..." << endl << flush;
-    ifstream fin("24FEB.txt");
+    ifstream fin(Form("%sE%s.txt",ce,era=="24F"?"B":"A"));
     string s;
     while (fin >> s) c->AddFile(s.c_str());
   }
@@ -40,22 +47,49 @@ void mk_IsoTrack() {
   IsoTrack it(c);
   //it.Loop();
 
+  // Copy this file over to era+version and backup copy
+  gROOT->ProcessLine(Form(".! cp -pn IsoTrack.root IsoTrack_%s_%s.root",cv,ce));
+  gROOT->ProcessLine(Form(".! cp -pn IsoTrack_%s_%s.root rootfiles/"
+			  "IsoTrack_%s_%s_orig.root",cv,ce,cv,ce));
+
   // Rebin ieta for more stable depths
   gROOT->ProcessLine(".L rebinProfiles.C+g");
-  rebinProfiles();
+  rebinProfiles("wide",era,version);
+  rebinProfiles("abs",era,version);
   
   // Solve corrections, IsoTrack.root -> CorrFact*.root
   gROOT->ProcessLine(".! mkdir pdf");
+  gROOT->ProcessLine(".! mkdir rootfiles");
   gROOT->ProcessLine(".L drawIsoTrack.C+g");
-  drawIsoTrack();
+  drawIsoTrack(era,version);
 
   // Even/odd tests of uncertainties for CorrFact*.root
   gROOT->ProcessLine(".L drawCorrFact.C+g");
-  drawCorrFact();
-  drawCorrFact("_wide");
+  drawCorrFact("",era,version);
+  drawCorrFact("_wide",era,version);
 
   // Control plots of depth covariance in IsoTrack.root
   gROOT->ProcessLine(".! mkdir pdf/drawCovariance");
+  gROOT->ProcessLine(Form(".! mkdir pdf/drawCovariance/%s_%s",cv,ce));
   gROOT->ProcessLine(".L drawCovariance.C+g");
-  drawCovariance();
+  drawCovariance(0,era,version);
+
+  if (era=="24CDEF") {
+    gROOT->ProcessLine(".L hybridCorrFact.C+g");
+    hybridCorrFact("rootfiles/CorrFact_hybrid_lxplus_v8_24CDEF.root",
+		   "rootfiles/CorrFact_lxplus_v8_24CDEF.root",
+		   //"rootfiles/CorrFact_wide_lxplus_v8_24CDEF.root");
+		   "rootfiles/CorrFact_abs_lxplus_v8_24CDEF.root");
+    hybridCorrFact("rootfiles/CorrFact_even_hybrid_lxplus_v8_24CDEF.root",
+		   "rootfiles/CorrFact_even_lxplus_v8_24CDEF.root",
+		   //"rootfiles/CorrFact_even_wide_lxplus_v8_24CDEF.root");
+		   "rootfiles/CorrFact_even_abs_lxplus_v8_24CDEF.root");
+    hybridCorrFact("rootfiles/CorrFact_odd_hybrid_lxplus_v8_24CDEF.root",
+		   "rootfiles/CorrFact_odd_lxplus_v8_24CDEF.root",
+		   //"rootfiles/CorrFact_odd_wide_lxplus_v8_24CDEF.root");
+		   "rootfiles/CorrFact_odd_abs_lxplus_v8_24CDEF.root");
+    
+    string version2 = "hybrid_"+version;
+    drawCorrFact("",era,version2);
+  }
 } // mk_IsoTrack

@@ -15,28 +15,38 @@
 
 #include <iostream>
 
-void drawIsoTracks(string mode);
+void drawIsoTracks(string mode, string era, string version);
 
-void drawIsoTrack() {
+void drawIsoTrack(string era="24F", string version="vX") {
 
-  drawIsoTracks("_even_wide");
-  drawIsoTracks("_odd_wide");
-  drawIsoTracks("_wide");
+  drawIsoTracks("_even_wide", era, version);
+  drawIsoTracks("_odd_wide", era, version);
+  drawIsoTracks("_wide", era, version);
 
-  drawIsoTracks("_even");
-  drawIsoTracks("_odd");
-  drawIsoTracks("");
+  if (era=="24CDEF") {
+    drawIsoTracks("_even_abs", era, version);
+    drawIsoTracks("_odd_abs", era, version);
+    drawIsoTracks("_abs", era, version);
+  }
+
+  drawIsoTracks("_even", era, version);
+  drawIsoTracks("_odd", era, version);
+  drawIsoTracks("", era, version);
 
 } // drawIsoTrack
 
-void drawIsoTracks(string mode) {
+void drawIsoTracks(string mode, string era, string version) {
 
-  cout << "Running drawIsoTrack(\""<<mode<<"\")..." << endl << flush;
+  cout << "Running drawIsoTrack(\""<<mode<<",\""<<era
+       << ",\""<<version<<"\")..."<<endl<<flush;
   
   TDirectory *curdir = gDirectory;
   setTDRStyle();
 
-  TFile *f = new TFile("IsoTrack.root","READ");
+  const char *ce = era.c_str();
+  const char *cv = version.c_str();
+  //TFile *f = new TFile(Form("IsoTrack%s.root",ce),"READ");
+  TFile *f = new TFile(Form("IsoTrack_%s_%s.root",cv,ce),"READ");
   //TFile *f = new TFile("IsoTrack_wide.root","READ");
   //TFile *f = new TFile("IsoTrack_lxplus_v4.root","READ");
   //TFile *f = new TFile("IsoTrack_lxplus_v3_odd.root","READ");
@@ -275,7 +285,7 @@ void drawIsoTracks(string mode) {
 
   TH1D *h_1 = tdrHist(Form("h_1%s",cm),"Correction Factor",0.15,2.7,
 		      "i#eta",-29,29);
-  lumi_136TeV = "2024F EGamma";
+  lumi_136TeV = Form("20%s EGamma",ce);
   extraText = "Private";
   TCanvas *c1 = tdrCanvas(Form("c1%s",cm),h_1,8,11,kRectangular);
 
@@ -312,13 +322,13 @@ void drawIsoTracks(string mode) {
   // Compare to single depth: https://indico.cern.ch/event/1460156/contributions/6147826/attachments/2935195/5155251/IsoTrackN163.pdf?#page=9
   tdrDraw(h,"Pz",kFullCircle,kBlack, kSolid,-1,kNone,0, 0.8);
 
-  c1->SaveAs(Form("pdf/IsoTrack_CorrFact%s.pdf",cm));
+  c1->SaveAs(Form("pdf/IsoTrack_CorrFact%s_%s_%s.pdf",cm,cv,ce));
 
 
   // Loook at means and RMS per depth vs total
   TH1D *h_2 = tdrHist(Form("h_2%s",cm),"Mean and RMS/Mean",0.,1.5,
 		      "i#eta",-25,25);
-  lumi_136TeV = "2024F EGamma Depth Dependent";
+  lumi_136TeV = Form("20%s EGamma Depth Dependent",ce);
   extraText = "Private";
   TCanvas *c2 = tdrCanvas(Form("c2%s",cm),h_2,8,11,kRectangular);
 
@@ -331,11 +341,12 @@ void drawIsoTracks(string mode) {
     tdrDraw(vhrms[i],"Pz",kFullCircle, color[i], kSolid,-1,kNone,0, 0.8);
   }
 
-  c2->SaveAs(Form("pdf/IsoTrack_RMSoMean%s.pdf",cm));
+  c2->SaveAs(Form("pdf/IsoTrack_RMSoMean%s_%s_%s.pdf",cm,cv,ce));
 
   
   // Store results for e.g. comparing even-odd cases or different eras
-  TFile *fout = new TFile(Form("CorrFact%s.root",cm),"RECREATE");
+  TFile *fout = new TFile(Form("rootfiles/CorrFact%s_%s_%s.root",cm,cv,ce),
+			  "RECREATE");
   cout << "Storing results to " << fout->GetName() << endl << flush;
   
   h->Write("h_di");
@@ -347,6 +358,7 @@ void drawIsoTracks(string mode) {
   }
   fout->Close();
 
-  cout << "File closed, finished drawIsoTracks(\""<<mode<<"\").\n"<<endl<<flush;
+  cout << "File closed, finished drawIsoTracks(\""<<mode<<",\""
+       <<era<<"\",\""<<version<<"\").\n"<<endl<<flush;
 } // drawIsoTracks(mode)
 #endif

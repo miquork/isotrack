@@ -1,8 +1,8 @@
 # isotrack
 IsoTrack calibration for HCAL with optional depth-dependence
 
-How to run this (e.g. on lxplus):
-`git clone https://github.com/miquork/isotrack.git`
+How to run this (e.g. on lxplus):  
+`git clone https://github.com/miquork/isotrack.git`  
 `cd isotrack`  
 `root -l -b -q mk_compile`  
 `root -l -b -q mk_IsoTrack.C`  
