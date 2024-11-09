@@ -4,18 +4,19 @@
 #include "drawCorrFact.C"
 #include "drawCovariance.C"
 #include "hybridCorrFact.C"
+#include "drawPileup.C"
 // Forward declarations (dont' work here?)
 //void rebinProfiles();
 //void drawIsoTrack();
 //void drawCorrFact();
 //void drawCovariance();
 //void hybridCorrFact();
+//void drawPileup();
 
 //R__LOAD_LIBRARY(IsoTrack.C+g)
 R__LOAD_LIBRARY(IsoTrack_C.so)
 
-
-void mk_IsoTrack(string era = "24CDEF", string version = "lxplus_v8") {
+void mk_IsoTrack(string era = "24F", string version = "local") {
 
   string path = gSystem->pwd();
   cout << "Current path: " << path << endl << flush;
@@ -43,30 +44,39 @@ void mk_IsoTrack(string era = "24CDEF", string version = "lxplus_v8") {
     c->AddFile("../data/IsoTrack/EGamma0_40to60_v4.root");
   }
 
-  // Create IsoTrack.root output file for interactive analysis
+  // Create IsoTrack.root output file for interactive analysis (lxplus only)
   IsoTrack it(c);
-  //it.Loop();
-
+  //if (runLXPLUS) // don't redo histograms if running locally
+  it.Loop();
+  //exit(0);
+  
   // Copy this file over to era+version and backup copy
-  gROOT->ProcessLine(Form(".! cp -pn IsoTrack.root IsoTrack_%s_%s.root",cv,ce));
-  gROOT->ProcessLine(Form(".! cp -pn IsoTrack_%s_%s.root rootfiles/"
+  gROOT->ProcessLine(Form(".! cp -p IsoTrack.root IsoTrack_%s_%s.root",cv,ce));
+  gROOT->ProcessLine(Form(".! cp -p IsoTrack_%s_%s.root rootfiles/"
 			  "IsoTrack_%s_%s_orig.root",cv,ce,cv,ce));
 
   // Rebin ieta for more stable depths
   gROOT->ProcessLine(".L rebinProfiles.C+g");
-  rebinProfiles("wide",era,version);
   rebinProfiles("abs",era,version);
+  //rebinProfiles("wide",era,version);
   
   // Solve corrections, IsoTrack.root -> CorrFact*.root
   gROOT->ProcessLine(".! mkdir pdf");
   gROOT->ProcessLine(".! mkdir rootfiles");
   gROOT->ProcessLine(".L drawIsoTrack.C+g");
+  drawIsoTracks("", era, version);
+
+  gROOT->ProcessLine(".L drawPileup.C+g");
+  drawPileup();
+  
+  //exit(0);
+  // draw more variants ((wide,abs) x (odd,even)
   drawIsoTrack(era,version);
 
   // Even/odd tests of uncertainties for CorrFact*.root
   gROOT->ProcessLine(".L drawCorrFact.C+g");
   drawCorrFact("",era,version);
-  drawCorrFact("_wide",era,version);
+  //drawCorrFact("_wide",era,version);
 
   // Control plots of depth covariance in IsoTrack.root
   gROOT->ProcessLine(".! mkdir pdf/drawCovariance");
@@ -74,20 +84,22 @@ void mk_IsoTrack(string era = "24CDEF", string version = "lxplus_v8") {
   gROOT->ProcessLine(".L drawCovariance.C+g");
   drawCovariance(0,era,version);
 
+  // Hybridize correction: use per-depth corrections vs |eta| for x2 statistics,
+  // and depth-independent for asymmetry (and time-dependence)
   if (era=="24CDEF") {
     gROOT->ProcessLine(".L hybridCorrFact.C+g");
-    hybridCorrFact("rootfiles/CorrFact_hybrid_lxplus_v8_24CDEF.root",
-		   "rootfiles/CorrFact_lxplus_v8_24CDEF.root",
-		   //"rootfiles/CorrFact_wide_lxplus_v8_24CDEF.root");
-		   "rootfiles/CorrFact_abs_lxplus_v8_24CDEF.root");
-    hybridCorrFact("rootfiles/CorrFact_even_hybrid_lxplus_v8_24CDEF.root",
-		   "rootfiles/CorrFact_even_lxplus_v8_24CDEF.root",
-		   //"rootfiles/CorrFact_even_wide_lxplus_v8_24CDEF.root");
-		   "rootfiles/CorrFact_even_abs_lxplus_v8_24CDEF.root");
-    hybridCorrFact("rootfiles/CorrFact_odd_hybrid_lxplus_v8_24CDEF.root",
-		   "rootfiles/CorrFact_odd_lxplus_v8_24CDEF.root",
-		   //"rootfiles/CorrFact_odd_wide_lxplus_v8_24CDEF.root");
-		   "rootfiles/CorrFact_odd_abs_lxplus_v8_24CDEF.root");
+    hybridCorrFact("rootfiles/CorrFact_hybrid_lxplus_v9_24CDEF.root",
+		   "rootfiles/CorrFact_lxplus_v9_24CDEF.root",
+		   "rootfiles/CorrFact_abs_lxplus_v9_24CDEF.root");
+		   //"rootfiles/CorrFact_wide_lxplus_v9_24CDEF.root");
+    hybridCorrFact("rootfiles/CorrFact_even_hybrid_lxplus_v9_24CDEF.root",
+		   "rootfiles/CorrFact_even_lxplus_v9_24CDEF.root",
+		   "rootfiles/CorrFact_even_abs_lxplus_v9_24CDEF.root");
+		   //"rootfiles/CorrFact_even_wide_lxplus_v9_24CDEF.root");
+    hybridCorrFact("rootfiles/CorrFact_odd_hybrid_lxplus_v9_24CDEF.root",
+		   "rootfiles/CorrFact_odd_lxplus_v9_24CDEF.root",
+		   "rootfiles/CorrFact_odd_abs_lxplus_v9_24CDEF.root");
+		   //"rootfiles/CorrFact_odd_wide_lxplus_v9_24CDEF.root");
     
     string version2 = "hybrid_"+version;
     drawCorrFact("",era,version2);
