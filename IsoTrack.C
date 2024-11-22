@@ -51,25 +51,28 @@ double etaVal(int ieta) {
 // Estimate effective area based on half granularity on iphi after |ieta|>=21
 double areaScale3x5(int ieta) {
 
-  double areaScale1 = 3.*5/(3.*9.-3.*5.); // = 1.25, |ieta|<21
-  double areaScale2 = 3.*3./(3.*5-3.*3.); // = 1.50, |ieta|>=21
-  if (abs(ieta)<20)  return areaScale1;
-  if (abs(ieta)==20) return (2./3.*areaScale1+1./3.*areaScale2);
+  double areaScale1 = 3.*5./(3.*9.-3.*5.); // = 1.25, |ieta|<21
+  double areaScale2 = 3.*3./(3.*5-3.*3.); // = 1.50, |ieta|>21
+  if (abs(ieta)<21)  return areaScale1;
   if (abs(ieta)==21) return (1./3.*areaScale1+2./3.*areaScale2);
   if (abs(ieta)>21)  return areaScale2;
+  // NB: need to consider even-odd iphi in the transition region?
   return 1.5;
 }
+
+// Override new developments
+bool useClassic = true;
 
 // Merge depths 1+2
 bool doPerDepth = true;
 bool enforce5x5 = false;
 bool enforce3x3 = false;
-bool enforce3x5 = false;
+bool enforce3x5 = true;
 bool freePassP3 = false;
 bool updateSingleDepth = false;//true;
 bool checkConsistency = true;
 bool doSingleDepth = true;
-bool mergeDepths1and2 = false;//true;
+//bool mergeDepths1and2 = false;//true;
 
 void IsoTrack::Loop()
 {
@@ -259,10 +262,14 @@ void IsoTrack::Loop()
       if (!ok) continue;
       
       //double eta = etaVal(t_ieta);
+      double esum(0), esum1(0), esum3(0);
+      if (!doPerDepth) {
+	esum = t_eHcal; esum1 = t_eHcal10; esum3 = t_eHcal30;
+      }
       if (doPerDepth) {
-	double esum(0), esum1(0);
 	double e[10] =  {0,0,0,0,0, 0,0,0,0,0};
 	double e1[10] = {0,0,0,0,0, 0,0,0,0,0};
+	double e3[10] = {0,0,0,0,0, 0,0,0,0,0};
 	e[0] = t_eMipDR;
 	int subdet, zside, ieta, iphi, depth;
 
@@ -300,7 +307,8 @@ void IsoTrack::Loop()
 	  bool is5x5 = (fabs(dieta)<3 && fabs(diphi)<3);
 	  bool is3x3 = (fabs(dieta)<2 && fabs(diphi)<2);
 	  bool is3x5 = (fabs(dieta)<2 && fabs(diphi)<3);
-	  bool noForce = (!enforce5x5 && !enforce3x3 && !enforce3x5);
+	  bool noForce = ((!enforce5x5 && !enforce3x3 && !enforce3x5) ||
+			  useClassic);
 	  
 	  bool pass = ((is5x5 && enforce5x5) || (is3x3 && enforce3x3) ||
 		       (is3x5 && enforce3x5) || noForce);
@@ -348,7 +356,8 @@ void IsoTrack::Loop()
 	  bool is5x5 = (fabs(dieta)<3 && fabs(diphi)<3);
 	  bool is3x3 = (fabs(dieta)<2 && fabs(diphi)<2);
 	  bool is3x5 = (fabs(dieta)<2 && fabs(diphi)<3);
-	  bool noForce = (!enforce5x5 && !enforce3x3 && !enforce3x5);
+	  bool noForce = ((!enforce5x5 && !enforce3x3 && !enforce3x5) ||
+			  useClassic);
 	  
 	  bool pass = ((is5x5 && enforce5x5) || (is3x3 && enforce3x3) ||
 		       (is3x5 && enforce3x5) || noForce);
@@ -360,6 +369,11 @@ void IsoTrack::Loop()
 	  }
 	  //ids.insert((*t_DetIds1)[idet]);
 	  //}
+
+	  if (pass) {
+	    esum1 += edet;
+	    e1[depth] += edet;
+	  }
 	} // for idet1
 
         // Cone energies for PU estimates (large cone)
@@ -398,7 +412,8 @@ void IsoTrack::Loop()
 	  bool is3x3 = (fabs(dieta)<2 && fabs(diphi)<2);
 	  bool is3x5 = (fabs(dieta)<2 && fabs(diphi)<3);
 	  
-	  bool noForce = (!enforce5x5 && !enforce3x3 && !enforce3x5);
+	  bool doForce = ((enforce5x5 || enforce3x3 || enforce3x5) &&
+			  !useClassic);
 	  bool is5x9 = (fabs(dieta)<3 && fabs(diphi)<7 &&
 			fabs(diphi)!=3 && fabs(diphi)!=4);
 	  //bool is3x9 = (fabs(dieta)<2 && fabs(diphi)<7 &&
@@ -408,16 +423,16 @@ void IsoTrack::Loop()
 	  bool is3x7 = (fabs(dieta)<2 && fabs(diphi)<5);
 	  
 	  bool pass = ((is5x9 && enforce5x5) || (is3x9 && enforce3x3) ||
-		       (is3x7 && enforce3x5) || noForce);
+		       (is3x7 && enforce3x5) || !doForce);
 
 	  bool veto = (((is5x5 && enforce5x5) || (is3x3 && enforce3x3) ||
-			(is3x5 && enforce3x5)) && !noForce);
+			(is3x5 && enforce3x5)) && doForce);
 	  pass = (pass && !veto);
 	  
 	  if (pass) {
 	    
-	    esum1 += edet;
-	    e1[depth] += edet;
+	    esum3 += edet;
+	    e3[depth] += edet;
 
 	    // Control plots of pileup subtraction
 	    if (abs(ieta)<=16) {
@@ -443,33 +458,43 @@ void IsoTrack::Loop()
 	  //}
 	} // for idet
 
-	if (true) { // with veto enabled
-	  esum1 += esum;
-	  for (int i = 0; i != 11; ++i) e1[i] += e[i];
+	bool doForce = ((enforce5x5 || enforce3x3 || enforce3x5) &&
+			!useClassic);
+	if (doForce) { // with veto enabled
+	  esum3 += esum;
+	  for (int i = 0; i != 11; ++i) e3[i] += e[i];
 	}
 	
 	if (updateSingleDepth) {
 	  t_eHcal = esum;
 	  t_eHcal10 = esum1;
+	  t_eHcal30 = esum3;
 	}
 	
 	// Verify sums
-	if (checkConsistency && fabs(esum-t_eHcal)>1) {
+	if (checkConsistency && !doForce && fabs(esum-t_eHcal)>1) {
 	  cout << "jentry = " << jentry
 	       << ", t_ieta = " << t_ieta << ", t_iphi = " << t_iphi
 	       << ", esum = " << esum << ", t_eHcal = " << t_eHcal << endl;
 	  continue;
 	}
-	if (checkConsistency && fabs(esum1-t_eHcal10)>1) {
+	if (checkConsistency && !doForce && fabs(esum1-t_eHcal10)>1) {
 	  cout << "jentry = " << jentry
 	       << ", t_ieta = " << t_ieta << ", t_iphi = " << t_iphi
 	       << ", esum1 = " << esum1 << ", t_eHcal1 = " << t_eHcal10 << endl;
+	  continue;
+	}
+	if (checkConsistency && !doForce && fabs(esum3-t_eHcal30)>1) {
+	  cout << "jentry = " << jentry
+	       << ", t_ieta = " << t_ieta << ", t_iphi = " << t_iphi
+	       << ", esum3 = " << esum3 << ", t_eHcal3 = " << t_eHcal30 << endl;
 	  continue;
 	}
 
 	// Merge depths 1+2 by replacing them both with half-average
 	// This will preserve the array sizes for later
 	// => matrix was singular, try setting e[1] to eps and e[2] to sum
+	/*
 	if (mergeDepths1and2) {
 	  //double e12_avg = 0.5*(e[1]+e[2]);
 	  //double pu12_avg = 0.5*(e1[1]+e1[2]);
@@ -481,6 +506,7 @@ void IsoTrack::Loop()
 	  e[1] = eps; e[2] = e12_sum;
 	  e1[1] = 0; e1[2] = pu12_sum;
 	}
+	*/
 	
 	// Fill histograms and profiles per depth
 	const int ndepth = 10;
@@ -490,22 +516,29 @@ void IsoTrack::Loop()
 	if (enforce5x5) areaScale = 0.5;//(5.*5.)/(5.*9.-5.*5.);
 	if (enforce3x3) areaScale = 0.5;//(3.*3.)/(3.*9.-3.*3.);
 	if (enforce3x5) areaScale = areaScale3x5(t_ieta);
-	double epu1sum = (esum-esum1)*areaScale;
-	double rcsum = (esum - epu1sum) / (t_p - t_eMipDR);
+	double epusum = (esum3 - esum) * areaScale;
+	double rcsum = (esum - epusum) / (t_p - t_eMipDR);
 	for (int i = 0; i != ndepth; ++i) {
 
 	  double depth = i;
-	  double epu1 = (i==0 ? 0 : e1[i]-e[i]) * areaScale;
+	  double epu1 = (i==0 ? 0 : e1[i]-e[i]);
 	  //double epu3 = (t_eHcal30-t_eHcal10)*0.5;
-	  double rc = (e[i]-epu1) / (t_p - t_eMipDR);
+	  double epu = (i==0 ? 0 : e3[i]-e[i]) * areaScale;
+	  double rc = (e[i]-epu) / (t_p - t_eMipDR);
+
+	  if (useClassic) {
+	    rc = (e[i]-epu1) / (t_p - t_eMipDR);
+	    rcsum = (t_eHcal-(t_eHcal10-t_eHcal)) / (t_p - t_eMipDR);
+	    epu = epu1;
+	  }
 
 	  h3raw->Fill(t_ieta, depth, e[i] / (t_p - t_eMipDR));
-	  h3pu1->Fill(t_ieta, depth, epu1 / (t_p - t_eMipDR));
+	  h3pu1->Fill(t_ieta, depth, epu / (t_p - t_eMipDR));
 	  h3c->Fill(t_ieta, depth, rc);
 	  
 	  if (rcsum>0.15 && rcsum<1.85) {
 	    p2raw->Fill(t_ieta, depth, e[i] / (t_p - t_eMipDR));
-	    p2pu1->Fill(t_ieta, depth, epu1 / (t_p - t_eMipDR));
+	    p2pu1->Fill(t_ieta, depth, epu / (t_p - t_eMipDR));
 	    p2c->Fill(t_ieta, depth, rc);
 	    if (jentry%2==0) p2c_even->Fill(t_ieta, depth, rc);
 	    if (jentry%2==1) p2c_odd->Fill(t_ieta, depth, rc);
@@ -532,23 +565,28 @@ void IsoTrack::Loop()
       
       if (doSingleDepth) {
 
-	double areaScale(0.5);
+	double areaScale(1.0);
 	if (enforce5x5) areaScale = 0.5;//(5.*5.)/(5.*9.-5.*5.);
 	if (enforce3x3) areaScale = 0.5;//(3.*3.)/(3.*9.-3.*3.);
 	if (enforce3x5) areaScale = areaScale3x5(t_ieta);
-	double epu1 = (t_eHcal10-t_eHcal) * areaScale;
+	double epu1 = (t_eHcal10-t_eHcal);
 	double epu3 = (t_eHcal30-t_eHcal10)*0.5;
-	double rc = (t_eHcal-epu1) / (t_p - t_eMipDR);
+	double epu = (esum3 - esum) * areaScale;
+	double rc = (esum-epu) / (t_p - t_eMipDR);
+	if (useClassic) {
+	  epu = epu1;
+	  rc = (t_eHcal-epu1) / (t_p - t_eMipDR);
+	}
 	
 	h2raw->Fill(t_ieta, t_eHcal / (t_p - t_eMipDR));
-	h2pu1->Fill(t_ieta, epu1 / (t_p - t_eMipDR));
+	h2pu1->Fill(t_ieta, epu / (t_p - t_eMipDR));
 	h2pu3->Fill(t_ieta, epu3 / (t_p - t_eMipDR));
 	h2mip->Fill(t_ieta, t_eMipDR / (t_p - t_eMipDR));
 	h2c->Fill(t_ieta, rc);
 	
 	if (rc>0.15 && rc<1.85) {
 	  praw->Fill(t_ieta, t_eHcal / (t_p - t_eMipDR));
-	  ppu1->Fill(t_ieta, epu1 / (t_p - t_eMipDR));
+	  ppu1->Fill(t_ieta, epu / (t_p - t_eMipDR));
 	  ppu3->Fill(t_ieta, epu3 / (t_p - t_eMipDR));
 	  pmip->Fill(t_ieta, t_eMipDR / (t_p - t_eMipDR));
 	  pc->Fill(t_ieta, rc);
