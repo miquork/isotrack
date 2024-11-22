@@ -9,7 +9,10 @@
 #include <TH2D.h>
 #include <TH3D.h>
 
+#include <set>
 #include <iostream>
+
+double puFactor(int ieta, double pmom, double eHcal, double ediff, bool debug = false);
 
 void unpackDetId(unsigned int detId, int& subdet, int& zside, int& ieta, int& iphi, int& depth) {
   // The maskings are defined in DataFormats/DetId/interface/DetId.h
@@ -61,8 +64,9 @@ double areaScale3x5(int ieta) {
 bool doPerDepth = true;
 bool enforce5x5 = false;
 bool enforce3x3 = false;
-bool enforce3x5 = true;
-bool updateSingleDepth = true;
+bool enforce3x5 = false;
+bool freePassP3 = false;
+bool updateSingleDepth = false;//true;
 bool checkConsistency = true;
 bool doSingleDepth = true;
 bool mergeDepths1and2 = false;//true;
@@ -120,8 +124,8 @@ void IsoTrack::Loop()
      fChain->SetBranchStatus("t_DetIds",1);
      fChain->SetBranchStatus("t_HitEnergies",1);
      // PU per depth (just first cone now)
-     //fChain->SetBranchStatus("t_DetIds1",1);
-     //fChain->SetBranchStatus("t_HitEnergies1",1);
+     fChain->SetBranchStatus("t_DetIds1",1);
+     fChain->SetBranchStatus("t_HitEnergies1",1);
      fChain->SetBranchStatus("t_DetIds3",1);
      fChain->SetBranchStatus("t_HitEnergies3",1);
    }
@@ -225,6 +229,22 @@ void IsoTrack::Loop()
 			       "E_{calo}",21,-10.5,10.5, 21,-10.5,10.5);
    p2dpu1_he2 = new TProfile2D("p2dpu1_he2",";#Deltai#eta;#Deltai#phi;"
 			       "E_{calo}",21,-10.5,10.5, 21,-10.5,10.5);
+
+   // Systematic study of pileup
+   fout->mkdir("pileup");
+   fout->cd("pileup");
+   map<int, TProfile3D*> mp3_0;
+   map<int, TProfile3D*> mp3_1;
+   map<int, TProfile3D*> mp3_3;
+   for (int ieta = -29; ieta != 29+1; ++ieta) {
+     TProfile3D *p3_0 = new TProfile3D(Form("p3_0_ieta%d",ieta),";#Delta|i#eta|;#Delta|i#phi|;depth", 21,-10.5,10.5, 25,-12.5,12.5, 7,0.5,7.5);
+     mp3_0[ieta] = p3_0;
+     TProfile3D *p3_1 = new TProfile3D(Form("p3_1_ieta%d",ieta),";#Delta|i#eta|;#Delta|i#phi|;depth", 21,-10.5,10.5, 25,-12.5,12.5, 7,0.5,7.5);
+     mp3_1[ieta] = p3_1;
+     TProfile3D *p3_3 = new TProfile3D(Form("p3_3_ieta%d",ieta),";#Delta|i#eta|;#Delta|i#phi|;depth", 21,-10.5,10.5, 25,-12.5,12.5, 7,0.5,7.5);
+     mp3_3[ieta] = p3_3;
+   } // for ietax
+   
    
    Long64_t nbytes = 0, nb = 0;
    for (Long64_t jentry=0; jentry<nentries;jentry++) {
@@ -246,12 +266,15 @@ void IsoTrack::Loop()
 	e[0] = t_eMipDR;
 	int subdet, zside, ieta, iphi, depth;
 
+	// Keep track of detIds seen so far in this event
+	set<unsigned int> ids;
+	
 	// Core energies
 	for (unsigned int idet = 0; idet != t_DetIds->size(); ++idet) {
 	  unpackDetId((*t_DetIds)[idet], subdet, zside, ieta, iphi, depth);
 	  ieta *= zside;
 	  double edet = (*t_HitEnergies)[idet];
-
+	  
 	  /*
 	  if (fabs(ieta-t_ieta)>3) { // looking into 5x5? sometimes off-center 
 	    cout << "jentry = " << jentry
@@ -266,9 +289,12 @@ void IsoTrack::Loop()
 	    continue;
 	  }
 	  */
-	  double dieta = (abs(ieta)-abs(t_ieta));
-	  double diphi = (abs(iphi)-abs(t_iphi));
-	  if (ieta*t_ieta<0) dieta += -1; // ieta=0 does not exist
+	  //double dieta = (abs(ieta)-abs(t_ieta));
+	  int dieta = (ieta-t_ieta)*TMath::Sign(1,t_ieta);
+	  //double diphi = (abs(iphi)-abs(t_iphi));
+	  int diphi = iphi-t_iphi;
+	  //if (ieta*t_ieta<0) dieta += -1; // ieta=0 does not exist
+	  if (ieta*t_ieta<0) dieta += TMath::Sign(1,t_ieta);
 	  if (abs(diphi)>36) diphi += (diphi>0 ? -72 : +72); // iphi is cyclic
 
 	  bool is5x5 = (fabs(dieta)<3 && fabs(diphi)<3);
@@ -276,8 +302,10 @@ void IsoTrack::Loop()
 	  bool is3x5 = (fabs(dieta)<2 && fabs(diphi)<3);
 	  bool noForce = (!enforce5x5 && !enforce3x3 && !enforce3x5);
 	  
-	  if ((is5x5 && enforce5x5) || (is3x3 && enforce3x3) ||
-	      (is3x5 && enforce3x5) || noForce) {
+	  bool pass = ((is5x5 && enforce5x5) || (is3x3 && enforce3x3) ||
+		       (is3x5 && enforce3x5) || noForce);
+	
+	  if (pass) {
 	    
 	    esum += edet;
 	    e[depth] += edet;
@@ -295,14 +323,46 @@ void IsoTrack::Loop()
 	      p2draw_he2->Fill(dieta, diphi, edet / (t_p - t_eMipDR));
 	    }
 	  } // is5x5
+
+	  TProfile3D *p3_0 = mp3_0[t_ieta];
+	  if (p3_0 && (pass || freePassP3)) {
+	    p3_0->Fill(dieta, diphi, depth, edet / (t_p - t_eMipDR));
+	  }
+	  ids.insert((*t_DetIds)[idet]);
 	} // for idet
 
-	// Cone energies for PU estimates
-	//for (unsigned int idet = 0; idet != t_DetIds1->size(); ++idet) {
-	//unpackDetId((*t_DetIds1)[idet], subdet, zside, ieta, iphi, depth);
-	//ieta *= zside;
-	//double edet = (*t_HitEnergies1)[idet];
+	// Cone energies for PU estimates (small cone)
+	for (unsigned int idet = 0; idet != t_DetIds1->size(); ++idet) {
+	  unpackDetId((*t_DetIds1)[idet], subdet, zside, ieta, iphi, depth);
+	  ieta *= zside;
+	  double edet = (*t_HitEnergies1)[idet];
 
+	  //double dieta = (abs(ieta)-abs(t_ieta));
+	  //double diphi = (abs(iphi)-abs(t_iphi));
+	  int dieta = (ieta-t_ieta)*TMath::Sign(1,t_ieta);
+	  int diphi = iphi-t_iphi;
+	  //if (ieta*t_ieta<0) dieta += -1; // ieta=0 does not exist
+	  if (ieta*t_ieta<0) dieta += TMath::Sign(1,t_ieta);
+	  if (abs(diphi)>36) diphi += (diphi>0 ? -72 : +72); // iphi is cyclic
+
+	  bool is5x5 = (fabs(dieta)<3 && fabs(diphi)<3);
+	  bool is3x3 = (fabs(dieta)<2 && fabs(diphi)<2);
+	  bool is3x5 = (fabs(dieta)<2 && fabs(diphi)<3);
+	  bool noForce = (!enforce5x5 && !enforce3x3 && !enforce3x5);
+	  
+	  bool pass = ((is5x5 && enforce5x5) || (is3x3 && enforce3x3) ||
+		       (is3x5 && enforce3x5) || noForce);
+	  
+	  //if (ids.find((*t_DetIds1)[idet])==ids.end()) {
+	  TProfile3D *p3_1 = mp3_1[t_ieta];
+	  if (p3_1 && (pass || freePassP3)) {
+	    p3_1->Fill(dieta, diphi, depth, edet / (t_p - t_eMipDR));
+	  }
+	  //ids.insert((*t_DetIds1)[idet]);
+	  //}
+	} // for idet1
+
+        // Cone energies for PU estimates (large cone)
 	for (unsigned int idet = 0; idet != t_DetIds3->size(); ++idet) {
 	  unpackDetId((*t_DetIds3)[idet], subdet, zside, ieta, iphi, depth);
 	  ieta *= zside;
@@ -323,13 +383,21 @@ void IsoTrack::Loop()
 	  }
 	  */
 
-	  double dieta = (abs(ieta)-abs(t_ieta));
-	  double diphi = (abs(iphi)-abs(t_iphi));
-	  if (ieta*t_ieta<0) dieta += -1; // ieta=0 does not exist
+	  //double dieta = (abs(ieta)-abs(t_ieta));
+	  int dieta = (ieta-t_ieta)*TMath::Sign(1,t_ieta);
+	  //double diphi = (abs(iphi)-abs(t_iphi));
+	  int diphi = iphi-t_iphi;
+	  //if (ieta*t_ieta<0) dieta += -1; // ieta=0 does not exist
+	  if (ieta*t_ieta<0) dieta += TMath::Sign(1,t_ieta);
 	  if (abs(diphi)>36) diphi += (diphi>0 ? -72 : +72); // iphi is cyclic
 	  
 	  //bool is5x9 = (fabs(dieta)<3 && fabs(diphi)<5);
 	  //bool is3x9 = (fabs(dieta)<2 && fabs(diphi)<5);
+
+	  bool is5x5 = (fabs(dieta)<3 && fabs(diphi)<3);
+	  bool is3x3 = (fabs(dieta)<2 && fabs(diphi)<2);
+	  bool is3x5 = (fabs(dieta)<2 && fabs(diphi)<3);
+	  
 	  bool noForce = (!enforce5x5 && !enforce3x3 && !enforce3x5);
 	  bool is5x9 = (fabs(dieta)<3 && fabs(diphi)<7 &&
 			fabs(diphi)!=3 && fabs(diphi)!=4);
@@ -339,8 +407,14 @@ void IsoTrack::Loop()
 	  		fabs(diphi)!=2);
 	  bool is3x7 = (fabs(dieta)<2 && fabs(diphi)<5);
 	  
-	  if ((is5x9 && enforce5x5) || (is3x9 && enforce3x3) ||
-	      (is3x7 && enforce3x5) || noForce) {
+	  bool pass = ((is5x9 && enforce5x5) || (is3x9 && enforce3x3) ||
+		       (is3x7 && enforce3x5) || noForce);
+
+	  bool veto = (((is5x5 && enforce5x5) || (is3x3 && enforce3x3) ||
+			(is3x5 && enforce3x5)) && !noForce);
+	  pass = (pass && !veto);
+	  
+	  if (pass) {
 	    
 	    esum1 += edet;
 	    e1[depth] += edet;
@@ -359,8 +433,21 @@ void IsoTrack::Loop()
 	      p2dpu1_he2->Fill(dieta, diphi, edet / (t_p - t_eMipDR));
 	    }
 	  } // is5x9
+
+	  //if (ids.find((*t_DetIds3)[idet])==ids.end()) {
+	  TProfile3D *p3_3 = mp3_3[t_ieta];
+	  if (p3_3 && (pass || freePassP3)) {
+	    p3_3->Fill(dieta, diphi, depth, edet / (t_p - t_eMipDR));
+	  }
+	  //ids.insert((*t_DetIds3)[idet]);
+	  //}
 	} // for idet
 
+	if (true) { // with veto enabled
+	  esum1 += esum;
+	  for (int i = 0; i != 11; ++i) e1[i] += e[i];
+	}
+	
 	if (updateSingleDepth) {
 	  t_eHcal = esum;
 	  t_eHcal10 = esum1;
@@ -399,7 +486,7 @@ void IsoTrack::Loop()
 	const int ndepth = 10;
 	double vrc[ndepth];
 	//double rcsum = rc; // precalculated (or sum explicitly)
-	double areaScale(0.5);
+	double areaScale(1.0);
 	if (enforce5x5) areaScale = 0.5;//(5.*5.)/(5.*9.-5.*5.);
 	if (enforce3x3) areaScale = 0.5;//(3.*3.)/(3.*9.-3.*3.);
 	if (enforce3x5) areaScale = areaScale3x5(t_ieta);
@@ -478,3 +565,58 @@ void IsoTrack::Loop()
    cout << "\nClosed output file IsoTrack.root" << endl << flush;
    cout << "IsoTrack::Loop() finished.\n" << endl << flush;
 } // Loop
+
+
+// Copied from CalibCorr.C from Sunanda Banerjee
+// type == 8: Run3 MAHI. Deleted all the rest of the code
+//double puFactor(int type, int ieta, double pmom, double eHcal, double ediff, bool debug = false) {
+double puFactor(int ieta, double pmom, double eHcal, double ediff, bool debug) {
+  
+  double fac(1.0);
+  if (debug)
+    std::cout << "Input Type " << 8 << " ieta " << ieta << " pmon " << pmom << " E " << eHcal << ":" << ediff;
+  
+  int jeta = std::abs(ieta);
+  double d2p = (ediff / pmom);
+  const double DELTA_CUT = 0.03;
+  
+  // type == 8: Run3 MAHI. Deleted all the rest
+  //} else {  // Mahi 22pu (Jan, 2022)
+  const double CONST_COR_COEF[6] = {0.995902, 0.991240, 0.981019, 0.788052, 0.597956, 0.538731};
+  const double LINEAR_COR_COEF[6] = {-0.0540563, -0.104361, -0.215936, -0.147801, -0.160845, -0.154359};
+  const double SQUARE_COR_COEF[6] = {0, 0, 0.0365911, 0.0161266, 0.0180053, 0.0184295};
+  const int PU_IETA_1 = 7;
+  const int PU_IETA_2 = 16;
+  const int PU_IETA_3 = 25;
+  const int PU_IETA_4 = 26;
+  const int PU_IETA_5 = 27;
+  unsigned icor = (unsigned(jeta >= PU_IETA_1) +
+		   unsigned(jeta >= PU_IETA_2) +
+		   unsigned(jeta >= PU_IETA_3) +
+		   unsigned(jeta >= PU_IETA_4) +
+		   unsigned(jeta >= PU_IETA_5));
+  double deltaCut = (icor > 2) ? 1.0 : DELTA_CUT;
+  if (d2p > deltaCut)
+    fac = (CONST_COR_COEF[icor] + LINEAR_COR_COEF[icor] * d2p + SQUARE_COR_COEF[icor] * d2p * d2p);
+  if (debug)
+    std::cout << " d2p " << d2p << ":" << DELTA_CUT << " coeff " << icor << ":" << CONST_COR_COEF[icor] << ":"
+	      << LINEAR_COR_COEF[icor] << ":" << SQUARE_COR_COEF[icor] << " Fac " << fac;
+//}
+//}
+  if (fac < 0 || fac > 1)
+    fac = 0;
+  if (debug)
+    std::cout << " Final factor " << fac << std::endl;
+  return fac;
+} // puFactor
+
+/*
+void test() {
+  // PU correction only for loose isolation cut
+  double ehcal = (((rcorForm_ == 3) && (cFactor_ != nullptr))
+                      ? (etot * cFactor_->getCorr(entry))
+                      : ((puCorr_ == 0) ? etot
+                                        : ((puCorr_ < 0) ? (etot * puFactor(-puCorr_, t_ieta, pmom, etot, ediff))
+                                                         : puFactorRho(puCorr_, t_ieta, t_rhoh, etot))));
+}
+*/

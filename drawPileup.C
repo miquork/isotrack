@@ -1,4 +1,4 @@
-// Purpose: Draw average pileup correction per depth
+// Purpose: Draw average pileup correction 
 #ifndef __drawPileup_C__
 #define __drawPileup_C__
 #include "TFile.h"

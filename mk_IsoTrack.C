@@ -45,13 +45,15 @@ void mk_IsoTrack(string era = "24F", string version = "local") {
   }
 
   // Create IsoTrack.root output file for interactive analysis (lxplus only)
+
   IsoTrack it(c);
   //if (runLXPLUS) // don't redo histograms if running locally
   it.Loop();
   //exit(0);
-  
+
   // Copy this file over to era+version and backup copy
   gROOT->ProcessLine(Form(".! cp -p IsoTrack.root IsoTrack_%s_%s.root",cv,ce));
+
   gROOT->ProcessLine(Form(".! cp -p IsoTrack_%s_%s.root rootfiles/"
 			  "IsoTrack_%s_%s_orig.root",cv,ce,cv,ce));
 
@@ -86,20 +88,17 @@ void mk_IsoTrack(string era = "24F", string version = "local") {
 
   // Hybridize correction: use per-depth corrections vs |eta| for x2 statistics,
   // and depth-independent for asymmetry (and time-dependence)
-  if (era=="24CDEF") {
+  if (era=="24CDEFGHI") {
     gROOT->ProcessLine(".L hybridCorrFact.C+g");
-    hybridCorrFact("rootfiles/CorrFact_hybrid_lxplus_v9_24CDEF.root",
-		   "rootfiles/CorrFact_lxplus_v9_24CDEF.root",
-		   "rootfiles/CorrFact_abs_lxplus_v9_24CDEF.root");
-		   //"rootfiles/CorrFact_wide_lxplus_v9_24CDEF.root");
-    hybridCorrFact("rootfiles/CorrFact_even_hybrid_lxplus_v9_24CDEF.root",
-		   "rootfiles/CorrFact_even_lxplus_v9_24CDEF.root",
-		   "rootfiles/CorrFact_even_abs_lxplus_v9_24CDEF.root");
-		   //"rootfiles/CorrFact_even_wide_lxplus_v9_24CDEF.root");
-    hybridCorrFact("rootfiles/CorrFact_odd_hybrid_lxplus_v9_24CDEF.root",
-		   "rootfiles/CorrFact_odd_lxplus_v9_24CDEF.root",
-		   "rootfiles/CorrFact_odd_abs_lxplus_v9_24CDEF.root");
-		   //"rootfiles/CorrFact_odd_wide_lxplus_v9_24CDEF.root");
+    hybridCorrFact("rootfiles/CorrFact_hybrid_lxplus_v11_24CDEFGHI.root",
+		   "rootfiles/CorrFact_lxplus_v11_24CDEF.root",
+		   "rootfiles/CorrFact_abs_lxplus_v11_24CDEFGHI.root");
+    hybridCorrFact("rootfiles/CorrFact_even_hybrid_lxplus_v11_24CDEFGHI.root",
+		   "rootfiles/CorrFact_even_lxplus_v1_24CDEFGHI.root",
+		   "rootfiles/CorrFact_even_abs_lxplus_v11_24CDEFGHI.root");
+    hybridCorrFact("rootfiles/CorrFact_odd_hybrid_lxplus_v11_24CDEFGHI.root",
+		   "rootfiles/CorrFact_odd_lxplus_v11_24CDEFGHI.root",
+		   "rootfiles/CorrFact_odd_abs_lxplus_v11_24CDEFGHI.root");
     
     string version2 = "hybrid_"+version;
     drawCorrFact("",era,version2);

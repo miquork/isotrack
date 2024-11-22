@@ -327,7 +327,7 @@ void drawIsoTracks(string mode, string era, string version) {
 
   // Loook at means and RMS per depth vs total
   TH1D *h_2 = tdrHist(Form("h_2%s",cm),"Mean and RMS/Mean",0.,1.5,
-		      "i#eta",-25,25);
+		      "i#eta",-29.5,29.5);
   lumi_136TeV = Form("20%s EGamma Depth Dependent",ce);
   extraText = "Private";
   TCanvas *c2 = tdrCanvas(Form("c2%s",cm),h_2,8,11,kRectangular);
