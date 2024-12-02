@@ -48,20 +48,33 @@ double etaVal(int ieta) {
 } // etaVal
 
 
-// Estimate effective area based on half granularity on iphi after |ieta|>=21
-double areaScale3x5(int ieta) {
+int delta_ieta(int ieta1, int ieta2) {
+  if (ieta1>0 && ieta2>0) return +(ieta1-ieta2);
+  if (ieta1<0 && ieta2<0) return -(ieta1-ieta2);
+  if (ieta1<0 && ieta2>0) return +(ieta1-ieta2)+1;
+  if (ieta1>0 && ieta2<0) return -(ieta1-ieta2)+1;
 
-  double areaScale1 = 3.*5./(3.*9.-3.*5.); // = 1.25, |ieta|<21
-  double areaScale2 = 3.*3./(3.*5-3.*3.); // = 1.50, |ieta|>21
-  if (abs(ieta)<21)  return areaScale1;
+  return 0;
+}
+
+// Estimate effective area based on half granularity on iphi after |ieta|>=21
+double areaScale3x5(int ieta, int iphi) {
+
+  double areaScale1  = 5./(9.-5.); // = 1.25, |ieta|<=19
+  double areaScale2  = 3./(5.-3.); // = 1.50, |ieta|>=22
+  double areaScale3o = 3./(5.-3.); // = 1.50, |ieta|==20, odd iphi
+  double areaScale3e = 2./(4.-2.); // = 1.00, |ieta|==20, even iphi
+  if (abs(ieta)<=19) return areaScale1;
+  if (abs(ieta)==20 && iphi%2==1) return (2./3.*areaScale1+1./3.*areaScale3o);
+  if (abs(ieta)==20 && iphi%2==0) return (2./3.*areaScale1+1./3.*areaScale3e);
   if (abs(ieta)==21) return (1./3.*areaScale1+2./3.*areaScale2);
-  if (abs(ieta)>21)  return areaScale2;
-  // NB: need to consider even-odd iphi in the transition region?
+  if (abs(ieta)>=22) return areaScale2;
+
   return 1.5;
 }
 
 // Override new developments
-bool useClassic = true;
+bool useClassic = false;//true;
 
 // Merge depths 1+2
 bool doPerDepth = true;
@@ -296,12 +309,11 @@ void IsoTrack::Loop()
 	    continue;
 	  }
 	  */
-	  //double dieta = (abs(ieta)-abs(t_ieta));
-	  int dieta = (ieta-t_ieta)*TMath::Sign(1,t_ieta);
+	  //int dieta = (ieta-t_ieta)*TMath::Sign(1,t_ieta);
+	  //if (ieta*t_ieta<0) dieta += TMath::Sign(1,t_ieta);
+	  int dieta = delta_ieta(ieta,t_ieta);
 	  //double diphi = (abs(iphi)-abs(t_iphi));
 	  int diphi = iphi-t_iphi;
-	  //if (ieta*t_ieta<0) dieta += -1; // ieta=0 does not exist
-	  if (ieta*t_ieta<0) dieta += TMath::Sign(1,t_ieta);
 	  if (abs(diphi)>36) diphi += (diphi>0 ? -72 : +72); // iphi is cyclic
 
 	  bool is5x5 = (fabs(dieta)<3 && fabs(diphi)<3);
@@ -345,12 +357,10 @@ void IsoTrack::Loop()
 	  ieta *= zside;
 	  double edet = (*t_HitEnergies1)[idet];
 
-	  //double dieta = (abs(ieta)-abs(t_ieta));
-	  //double diphi = (abs(iphi)-abs(t_iphi));
-	  int dieta = (ieta-t_ieta)*TMath::Sign(1,t_ieta);
+	  //int dieta = (ieta-t_ieta)*TMath::Sign(1,t_ieta);
+	  //if (ieta*t_ieta<0) dieta += TMath::Sign(1,t_ieta);
+	  int dieta = delta_ieta(ieta,t_ieta);
 	  int diphi = iphi-t_iphi;
-	  //if (ieta*t_ieta<0) dieta += -1; // ieta=0 does not exist
-	  if (ieta*t_ieta<0) dieta += TMath::Sign(1,t_ieta);
 	  if (abs(diphi)>36) diphi += (diphi>0 ? -72 : +72); // iphi is cyclic
 
 	  bool is5x5 = (fabs(dieta)<3 && fabs(diphi)<3);
@@ -397,12 +407,10 @@ void IsoTrack::Loop()
 	  }
 	  */
 
-	  //double dieta = (abs(ieta)-abs(t_ieta));
-	  int dieta = (ieta-t_ieta)*TMath::Sign(1,t_ieta);
-	  //double diphi = (abs(iphi)-abs(t_iphi));
+	  //int dieta = (ieta-t_ieta)*TMath::Sign(1,t_ieta);
+	  //if (ieta*t_ieta<0) dieta += TMath::Sign(1,t_ieta);
+	  int dieta = delta_ieta(ieta,t_ieta);
 	  int diphi = iphi-t_iphi;
-	  //if (ieta*t_ieta<0) dieta += -1; // ieta=0 does not exist
-	  if (ieta*t_ieta<0) dieta += TMath::Sign(1,t_ieta);
 	  if (abs(diphi)>36) diphi += (diphi>0 ? -72 : +72); // iphi is cyclic
 	  
 	  //bool is5x9 = (fabs(dieta)<3 && fabs(diphi)<5);
@@ -515,7 +523,7 @@ void IsoTrack::Loop()
 	double areaScale(1.0);
 	if (enforce5x5) areaScale = 0.5;//(5.*5.)/(5.*9.-5.*5.);
 	if (enforce3x3) areaScale = 0.5;//(3.*3.)/(3.*9.-3.*3.);
-	if (enforce3x5) areaScale = areaScale3x5(t_ieta);
+	if (enforce3x5) areaScale = areaScale3x5(t_ieta, t_iphi);
 	double epusum = (esum3 - esum) * areaScale;
 	double rcsum = (esum - epusum) / (t_p - t_eMipDR);
 	for (int i = 0; i != ndepth; ++i) {
@@ -568,7 +576,7 @@ void IsoTrack::Loop()
 	double areaScale(1.0);
 	if (enforce5x5) areaScale = 0.5;//(5.*5.)/(5.*9.-5.*5.);
 	if (enforce3x3) areaScale = 0.5;//(3.*3.)/(3.*9.-3.*3.);
-	if (enforce3x5) areaScale = areaScale3x5(t_ieta);
+	if (enforce3x5) areaScale = areaScale3x5(t_ieta, t_iphi);
 	double epu1 = (t_eHcal10-t_eHcal);
 	double epu3 = (t_eHcal30-t_eHcal10)*0.5;
 	double epu = (esum3 - esum) * areaScale;

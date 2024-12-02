@@ -15,6 +15,12 @@
 
 //R__LOAD_LIBRARY(IsoTrack.C+g)
 R__LOAD_LIBRARY(IsoTrack_C.so)
+R__LOAD_LIBRARY(drawIsoTrack_C.so)
+R__LOAD_LIBRARY(compareCorrFact_C.so)
+R__LOAD_LIBRARY(drawPileUp_C.so)
+R__LOAD_LIBRARY(rebinProfiles_C.so)
+R__LOAD_LIBRARY(drawCovariance_C.so)
+R__LOAD_LIBRARY(hybridCorrFact_C.so)
 
 void mk_IsoTrack(string era = "24F", string version = "local") {
 
@@ -46,59 +52,68 @@ void mk_IsoTrack(string era = "24F", string version = "local") {
 
   // Create IsoTrack.root output file for interactive analysis (lxplus only)
 
+  // Uncomment on lxplus
+
   IsoTrack it(c);
   //if (runLXPLUS) // don't redo histograms if running locally
-  it.Loop();
+  //it.Loop(); // uncomment on lxplus
   //exit(0);
 
   // Copy this file over to era+version and backup copy
+  // uncomment on lxplus
   gROOT->ProcessLine(Form(".! cp -p IsoTrack.root IsoTrack_%s_%s.root",cv,ce));
 
   gROOT->ProcessLine(Form(".! cp -p IsoTrack_%s_%s.root rootfiles/"
-			  "IsoTrack_%s_%s_orig.root",cv,ce,cv,ce));
+  			  "IsoTrack_%s_%s_orig.root",cv,ce,cv,ce));
 
   // Rebin ieta for more stable depths
-  gROOT->ProcessLine(".L rebinProfiles.C+g");
+  //gROOT->ProcessLine(".L rebinProfiles.C+g");
   rebinProfiles("abs",era,version);
   //rebinProfiles("wide",era,version);
   
   // Solve corrections, IsoTrack.root -> CorrFact*.root
   gROOT->ProcessLine(".! mkdir pdf");
   gROOT->ProcessLine(".! mkdir rootfiles");
-  gROOT->ProcessLine(".L drawIsoTrack.C+g");
-  drawIsoTracks("", era, version);
+  //gROOT->ProcessLine(".L drawIsoTrack.C+g");
+  //drawIsoTracks("", era, version);
 
-  gROOT->ProcessLine(".L drawPileup.C+g");
+  //gROOT->ProcessLine(".L drawPileup.C+g");
   drawPileup();
+
+  
+  // Even-odd
+  //drawIsoTracks("_even", era, version);
+  //drawIsoTracks("_odd", era, version);
+  //drawIsoTracks("", era, version);
   
   //exit(0);
   // draw more variants ((wide,abs) x (odd,even)
-  drawIsoTrack(era,version);
+  drawIsoTrack(era,version); // crashing?
 
   // Even/odd tests of uncertainties for CorrFact*.root
-  gROOT->ProcessLine(".L drawCorrFact.C+g");
+  //gROOT->ProcessLine(".L drawCorrFact.C+g");
   drawCorrFact("",era,version);
   //drawCorrFact("_wide",era,version);
 
   // Control plots of depth covariance in IsoTrack.root
   gROOT->ProcessLine(".! mkdir pdf/drawCovariance");
   gROOT->ProcessLine(Form(".! mkdir pdf/drawCovariance/%s_%s",cv,ce));
-  gROOT->ProcessLine(".L drawCovariance.C+g");
+  //gROOT->ProcessLine(".L drawCovariance.C+g");
   drawCovariance(0,era,version);
 
   // Hybridize correction: use per-depth corrections vs |eta| for x2 statistics,
   // and depth-independent for asymmetry (and time-dependence)
   if (era=="24CDEFGHI") {
-    gROOT->ProcessLine(".L hybridCorrFact.C+g");
-    hybridCorrFact("rootfiles/CorrFact_hybrid_lxplus_v11_24CDEFGHI.root",
-		   "rootfiles/CorrFact_lxplus_v11_24CDEF.root",
-		   "rootfiles/CorrFact_abs_lxplus_v11_24CDEFGHI.root");
-    hybridCorrFact("rootfiles/CorrFact_even_hybrid_lxplus_v11_24CDEFGHI.root",
-		   "rootfiles/CorrFact_even_lxplus_v1_24CDEFGHI.root",
-		   "rootfiles/CorrFact_even_abs_lxplus_v11_24CDEFGHI.root");
-    hybridCorrFact("rootfiles/CorrFact_odd_hybrid_lxplus_v11_24CDEFGHI.root",
-		   "rootfiles/CorrFact_odd_lxplus_v11_24CDEFGHI.root",
-		   "rootfiles/CorrFact_odd_abs_lxplus_v11_24CDEFGHI.root");
+    //gROOT->ProcessLine(".L hybridCorrFact.C+g");
+    hybridCorrFact("rootfiles/CorrFact_hybrid_lxplus_v14_24CDEFGHI.root",
+		   "rootfiles/CorrFact_lxplus_v14_24CDEFGHI.root",
+		   "rootfiles/CorrFact_abs_lxplus_v14_24CDEFGHI.root");
+    hybridCorrFact("rootfiles/CorrFact_even_hybrid_lxplus_v14_24CDEFGHI.root",
+		   "rootfiles/CorrFact_even_lxplus_v14_24CDEFGHI.root",
+		   "rootfiles/CorrFact_even_abs_lxplus_v14_24CDEFGHI.root");
+    hybridCorrFact("rootfiles/CorrFact_odd_hybrid_lxplus_v14_24CDEFGHI.root",
+		   "rootfiles/CorrFact_odd_lxplus_v14_24CDEFGHI.root",
+		   "rootfiles/CorrFact_odd_abs_lxplus_v14_24CDEFGHI.root");
     
     string version2 = "hybrid_"+version;
     drawCorrFact("",era,version2);

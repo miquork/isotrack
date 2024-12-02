@@ -2,11 +2,18 @@
 #include "TFile.h"
 #include "TH1D.h"
 
+#include <fstream>
+#include <map>
+#include <string>
+
 #include "tdrstyle_mod22.C"
+
+void parseSunanda();
 
 void compareCorrFacts(string file1, string file2,
 		      string name1="file1", string name2="filel2",
-		      string title = "IsoTrack", string name="") {
+		      string title = "IsoTrack", string name="",
+		      double ymin=0.8, double ymax=1.2, bool addDI=true) {
 
   cout << "Running compareCorrFact(\""<<file1<<",\""<<file2<<"\")..."
        << endl << flush;
@@ -28,12 +35,13 @@ void compareCorrFacts(string file1, string file2,
   const char *cf2 = name2.c_str();
   const char *cn = name.c_str();
   TH1D *h_1 = tdrHist(Form("h_1dcf%s%s",cf1,cf2),
-		      Form("CF(%s) / CF(%s)",cf2,cf1), 0.8,1.2, "i#eta",-29,29);
+		      //Form("CF(%s) / CF(%s)",cf2,cf1), 0.8,1.2, "i#eta",-29,29);
+		      Form("CF(%s) / CF(%s)",cf2,cf1),ymin,ymax,"i#eta",-29,29);
   lumi_136TeV = title.c_str();
   extraText = "Private";
   TCanvas *c1 = tdrCanvas(Form("c1_dcf%s%s",cf1,cf2),h_1,8,11,kRectangular);
 
-  TLegend *leg = tdrLeg(0.40,0.90-5*0.05,0.65,0.90);
+  TLegend *leg = tdrLeg(0.40,0.90-(addDI ? 5 : 4)*0.05,0.65,0.90);
   TLegend *leg2 = tdrLeg(0.40,0.15,0.65,0.15+3*0.05);
 
   TH1D *he = (TH1D*)fe->Get("h_di"); assert(he);
@@ -55,7 +63,7 @@ void compareCorrFacts(string file1, string file2,
     }
   }
 
-  leg->AddEntry(hr,"Depth independent","PLE");
+  if (addDI) leg->AddEntry(hr,"Depth independent","PLE");
 
   TLine *l = new TLine();
   l->SetLineStyle(kDashed);
@@ -104,13 +112,15 @@ void compareCorrFacts(string file1, string file2,
     tdrDraw(hr,"Pz",marker[i],color[i], kSolid,-1,kNone,0, 0.8);
     hr->SetLineWidth(2);
     if (i<5) leg->AddEntry(hr,Form("DD depth %d",i),"PLE");
-    else leg2->AddEntry(hr,Form("DD depth %d (HB)",i),"PLE");
+    else leg2->AddEntry(hr,Form("DD depth %d (HE)",i),"PLE");
   }
 
   // Reference results from depth-independent case
-  tdrDraw(hr,"Pz",kFullCircle,kBlack, kSolid,-1,kNone,0, 0.8);
-  hr->SetLineWidth(2);
-
+  if (addDI) {
+    tdrDraw(hr,"Pz",kFullCircle,kBlack, kSolid,-1,kNone,0, 0.8);
+    hr->SetLineWidth(2);
+  }
+    
   c1->SaveAs(Form("pdf/compareCorrFact_%s_vs_%s%s.pdf",cf1,cf2,cn));
 
   cout << "Done with compareCorrFact(\""<<file1<<",\""<<file2<<"\")."
@@ -119,6 +129,7 @@ void compareCorrFacts(string file1, string file2,
 
 void compareCorrFact() {
 
+  /*
   // First and second half of early 2024
   compareCorrFacts("rootfiles/CorrFact_lxplus_v8_24CDE.root",
 		   "rootfiles/CorrFact_lxplus_v8_24F.root",
@@ -133,6 +144,82 @@ void compareCorrFact() {
   compareCorrFacts("rootfiles/CorrFact_abs_lxplus_v8_24CDEF.root",
 		   "rootfiles/CorrFact_lxplus_v8_24CDEF.root",
 		   "Both","Signed","IsoTrack |i#eta| bins","abs");
-  
+  */
+
+  parseSunanda();
+
+  compareCorrFacts("rootfiles/CorrFact_Sunanda_24CDEFGHI.root",
+		   "rootfiles/CorrFact_lxplus_v13_24CDEFGHI.root",
+		   "Sunanda","Mikko","IsoTrack: teams","_zoomout",0.,2.,false);
+  compareCorrFacts("rootfiles/CorrFact_Sunanda_24CDEFGHI.root",
+		   "rootfiles/CorrFact_lxplus_v13_24CDEFGHI.root",
+		   "Sunanda","Mikko","IsoTrack: teams","_zoomin",0.8,1.3,false);
+
+  compareCorrFacts("rootfiles/CorrFact_lxplus_v13_24CDEFGHI.root",
+		   "rootfiles/CorrFact_lxplus_v14_24CDEFGHI.root",
+		   "v13_regular","v14_3x5","IsoTrack: containment 3#times5",
+		   "",0.8,1.6);
+
+  compareCorrFacts("rootfiles/CorrFact_lxplus_v14_24CDEFGHI.root",
+		   "rootfiles/CorrFact_hybrid_lxplus_v14_24CDEFGHI.root",
+		   "signed","abs","IsoTrack: hybrid correction",
+		   "",0.9,1.15);
   
 }
+
+// Parse Sunanda's text files into .root 
+void parseSunanda() {
+
+  // For example histogram
+  TFile *f = new TFile("rootfiles/CorrFact_lxplus_v11_24CDEFGHI.root","READ");
+  assert(f && !f->IsZombie());
+
+  // For output histograms
+  TFile *fout = new TFile("rootfiles/CorrFact_Sunanda_24CDEFGHI.root","RECREATE");
+  assert(fout && !fout->IsZombie());
+  
+  TH1D *h = (TH1D*)f->Get("h_dd_1"); assert(h);
+  TH1D *h0 = (TH1D*)h->Clone("hf_dd_0"); h0->Reset();
+  
+  // For Sunanda's results in text file format
+  ifstream fin("textfiles/24CDEFGHIEBS00corr.txt");
+
+  // Remove header
+  char cline[1024];
+  fin.getline(cline,1024);
+  cout << cline << endl << flush;
+
+  map<int, TH1D*> mh;
+  mh[0] = h0;
+  
+  while (fin.getline(cline,1024)) {
+
+    char detid[512];
+    int ieta, depth;
+    double corr, err;
+    if (sscanf(cline,"%s %d %d %lf %lf",detid,&ieta,&depth,&corr,&err)==5) {
+      TH1D *h = mh[depth];
+      if (!h) {
+	h = (TH1D*)h0->Clone(Form("hf_dd_%d",depth));
+	mh[depth] = h;
+      }
+      int i = h->FindBin(ieta);
+      h->SetBinContent(i, corr);
+      h->SetBinError(i, err);
+    }
+    else {
+      cout << "Error reading line:"<<endl<<cline<<endl<<flush;
+    }
+    
+  } // while fin
+
+  fout->cd();
+  if (mh[0]) mh[0]->Write("h_di",TObject::kOverwrite);
+  for (int i = 0; i != mh.size(); ++i) {
+    TH1D *h = mh[i];
+    if (!h) continue;
+    h->Write(Form("hf_dd_%d",i),TObject::kOverwrite);
+  }
+  fout->Close();
+  
+} // parseSunanda

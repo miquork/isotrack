@@ -19,11 +19,11 @@ void drawIsoTracks(string mode, string era, string version);
 
 void drawIsoTrack(string era="24F", string version="vX") {
 
-  drawIsoTracks("_even_wide", era, version);
-  drawIsoTracks("_odd_wide", era, version);
-  drawIsoTracks("_wide", era, version);
+  //drawIsoTracks("_even_wide", era, version);
+  //drawIsoTracks("_odd_wide", era, version);
+  //drawIsoTracks("_wide", era, version);
 
-  if (era=="24CDEF") {
+  if (era=="24CDEFGHI") {
     drawIsoTracks("_even_abs", era, version);
     drawIsoTracks("_odd_abs", era, version);
     drawIsoTracks("_abs", era, version);
@@ -65,9 +65,9 @@ void drawIsoTracks(string mode, string era, string version) {
   TProfile *p = (TProfile*)f->Get(Form("pc%s",cm));
   TProfile2D *p2 = (TProfile2D*)f->Get(Form("p2c%s",cm));
   TProfile3D *p3 = (TProfile3D*)f->Get(Form("p3c%s",cm));
-  assert(p);
-  assert(p2);
-  assert(p3);
+  assert(p);   if (!p)  exit(1);
+  assert(p2);  if (!p2) exit(2);
+  assert(p3);  if (!p3) exit(3);
 
   cout << "Inverting depth-independent corrections" << endl << flush;
   
@@ -101,13 +101,13 @@ void drawIsoTracks(string mode, string era, string version) {
       for (int i = 0; i != ndepth; ++i) { // loop depths (include ECAL: i==0)
 
 	if (vhd[i]==0) {
-	  vhd[i] = p->ProjectionX(Form("hd_%d%s",i,cm));
+	  vhd[i] = p->ProjectionX(Form("hd_ieta%d_%d%s",ieta,i,cm));
 	  vhd[i]->Reset();
-	  vhdf[i] = p->ProjectionX(Form("hdf_%d%s",i,cm));
+	  vhdf[i] = p->ProjectionX(Form("hdf_ieta%d_%d%s",ieta,i,cm));
 	  vhdf[i]->Reset();
-	  vhrms[i] = p->ProjectionX(Form("hrms_%d%s",i,cm));
+	  vhrms[i] = p->ProjectionX(Form("hrms_ieta%d_%d%s",ieta,i,cm));
 	  vhrms[i]->Reset();
-	  vhmean[i] = p->ProjectionX(Form("hmean_%d%s",i,cm));
+	  vhmean[i] = p->ProjectionX(Form("hmean_ieta%d_%d%s",ieta,i,cm));
 	  vhmean[i]->Reset();
 	}
 	TH1D *hd = vhd[i];
@@ -229,9 +229,19 @@ void drawIsoTracks(string mode, string era, string version) {
       // Set vector length to active depths and exclude ECAL
       int ndepth2 = 4; //
       int jeta = p2->GetXaxis()->GetBinCenter(ieta);
+      // Depths for original case with wide cone
+      /*
       if (fabs(jeta)==15) ndepth2 = 5;
       if (fabs(jeta)>=16) ndepth2 = 6;
       if (fabs(jeta)>=23) ndepth2 = 7;
+      */
+      // Depths for new 3x5
+
+      if (fabs(jeta)==17) ndepth2 = 5;
+      if (fabs(jeta)>=18) ndepth2 = 6;
+      if (fabs(jeta)>=18) ndepth2 = 6;
+      if (fabs(jeta)>=25) ndepth2 = 7;
+
       TVectorD vec_c(ndepth2);
       TVectorD vec_err(ndepth2);
       TVectorD vec_mu(ndepth2);
