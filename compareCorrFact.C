@@ -145,7 +145,7 @@ void compareCorrFact() {
 		   "rootfiles/CorrFact_lxplus_v8_24CDEF.root",
 		   "Both","Signed","IsoTrack |i#eta| bins","abs");
   */
-
+  /*
   parseSunanda();
 
   compareCorrFacts("rootfiles/CorrFact_Sunanda_24CDEFGHI.root",
@@ -164,7 +164,18 @@ void compareCorrFact() {
 		   "rootfiles/CorrFact_hybrid_lxplus_v14_24CDEFGHI.root",
 		   "signed","abs","IsoTrack: hybrid correction",
 		   "",0.9,1.15);
-  
+
+  compareCorrFacts("rootfiles/CorrFact_odd_hybrid_lxplus_v14_24CDEFGHI.root",
+		   "rootfiles/CorrFact_even_hybrid_lxplus_v14_24CDEFGHI.root",
+		   "odd","even","IsoTrack: even vs odd",
+		   "",0.9,1.15);
+  */
+
+
+  compareCorrFacts("rootfiles/CorrFact_lxplus_v15_24CDEFGHI.root",
+		   "rootfiles/CorrFact_lxplus_v14_24CDEFGHI.root",
+		   "v15","v14","IsoTrack: v15 with gain corrections",
+		   "",0.8,1.3);
 }
 
 // Parse Sunanda's text files into .root 

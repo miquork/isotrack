@@ -12,6 +12,9 @@
 #include <set>
 #include <iostream>
 
+// Introduce _gainCorrectionRetriever global pointer
+#include "gainCorrections.C"
+
 double puFactor(int ieta, double pmom, double eHcal, double ediff, bool debug = false);
 
 void unpackDetId(unsigned int detId, int& subdet, int& zside, int& ieta, int& iphi, int& depth) {
@@ -76,15 +79,28 @@ double areaScale3x5(int ieta, int iphi) {
 // Override new developments
 bool useClassic = false;//true;
 
-// Merge depths 1+2
+// Apply gain corrections from Yildiray
+bool correctGains = true;
+
+// IsoTrack per depth and/or single depth
 bool doPerDepth = true;
+bool doSingleDepth = true;
+
+// Limited size regions to include containment
 bool enforce5x5 = false;
 bool enforce3x3 = false;
 bool enforce3x5 = true;
-bool freePassP3 = false;
+
+// Propagate updated single depths (gains and/or size) to classic single depth
 bool updateSingleDepth = false;//true;
+
+// Check if (classic, non-updated) esum and branches are consistent
 bool checkConsistency = true;
-bool doSingleDepth = true;
+
+// Fill cluster shapes without limited-size mask
+bool freePassP3 = false;
+
+// Merge depths 1+2
 //bool mergeDepths1and2 = false;//true;
 
 void IsoTrack::Loop()
@@ -146,6 +162,15 @@ void IsoTrack::Loop()
      fChain->SetBranchStatus("t_HitEnergies3",1);
    }
    //fChain->SetBranchStatus("t_DetIds",1);
+
+   // Do gain corrections
+   if (correctGains) {
+     fChain->SetBranchStatus("t_Run",1);
+   }
+
+   // Load gain corrections and activate _gainCorrectionRetriever global pointer
+   gainCorrections();
+   
    
    Long64_t nentries = fChain->GetEntriesFast();
 
@@ -261,7 +286,6 @@ void IsoTrack::Loop()
      mp3_3[ieta] = p3_3;
    } // for ietax
    
-   
    Long64_t nbytes = 0, nb = 0;
    for (Long64_t jentry=0; jentry<nentries;jentry++) {
       Long64_t ientry = LoadTree(jentry);
@@ -294,6 +318,7 @@ void IsoTrack::Loop()
 	  unpackDetId((*t_DetIds)[idet], subdet, zside, ieta, iphi, depth);
 	  ieta *= zside;
 	  double edet = (*t_HitEnergies)[idet];
+	  if (correctGains) edet *= _gainCorrectionRetriever->getCorrection(t_Run, ieta, depth);
 	  
 	  /*
 	  if (fabs(ieta-t_ieta)>3) { // looking into 5x5? sometimes off-center 
@@ -356,7 +381,8 @@ void IsoTrack::Loop()
 	  unpackDetId((*t_DetIds1)[idet], subdet, zside, ieta, iphi, depth);
 	  ieta *= zside;
 	  double edet = (*t_HitEnergies1)[idet];
-
+	  if (correctGains) edet *= _gainCorrectionRetriever->getCorrection(t_Run, ieta, depth);
+	  
 	  //int dieta = (ieta-t_ieta)*TMath::Sign(1,t_ieta);
 	  //if (ieta*t_ieta<0) dieta += TMath::Sign(1,t_ieta);
 	  int dieta = delta_ieta(ieta,t_ieta);
@@ -391,7 +417,8 @@ void IsoTrack::Loop()
 	  unpackDetId((*t_DetIds3)[idet], subdet, zside, ieta, iphi, depth);
 	  ieta *= zside;
 	  double edet = (*t_HitEnergies3)[idet];
-
+	  if (correctGains) edet *= _gainCorrectionRetriever->getCorrection(t_Run, ieta, depth);
+	  
 	  /*
 	  if (fabs(ieta-t_ieta)>4) { // looking into 7x7?
 	    cout << "jentry = " << jentry
@@ -470,7 +497,7 @@ void IsoTrack::Loop()
 			!useClassic);
 	if (doForce) { // with veto enabled
 	  esum3 += esum;
-	  for (int i = 0; i != 11; ++i) e3[i] += e[i];
+	  for (int i = 0; i != 10; ++i) e3[i] += e[i];
 	}
 	
 	if (updateSingleDepth) {
