@@ -379,7 +379,7 @@ void IsoTrack::Loop()
 	  unsigned int id = (*t_DetIds)[idet];
 	  double edet = (*t_HitEnergies)[idet];
 	  //if (correctGains) edet *= _gainCorrectionRetriever->getCorrection(t_Run, ieta, depth);
-	  if (correctCuts)  edet *= (edet>threshold(id, 4) ? 1 : 0);
+	  if (correctCuts)  edet *= (edet>threshold(id, 3) ? 1 : 0);
 	  if (correctGains) edet *= cDuplicate_->getCorr(t_Run, ieta, depth);
 	  if (correctPhis)  edet *= cFactor_->getCorr(t_Run, id);
 	  
@@ -446,7 +446,7 @@ void IsoTrack::Loop()
 	  unsigned int id = (*t_DetIds1)[idet];
 	  double edet = (*t_HitEnergies1)[idet];
 	  //if (correctGains) edet *= _gainCorrectionRetriever->getCorrection(t_Run, ieta, depth);
-	  if (correctCuts)  edet *= (edet>threshold(id, 4) ? 1 : 0);
+	  if (correctCuts)  edet *= (edet>threshold(id, 3) ? 1 : 0);
 	  if (correctGains) edet *= cDuplicate_->getCorr(t_Run, ieta, depth);
 	  if (correctPhis)  edet *= cFactor_->getCorr(t_Run, id);
 	  
@@ -486,7 +486,7 @@ void IsoTrack::Loop()
 	  unsigned int id = (*t_DetIds3)[idet];
 	  double edet = (*t_HitEnergies3)[idet];
 	  //if (correctGains) edet *= _gainCorrectionRetriever->getCorrection(t_Run, ieta, depth);
-	  if (correctCuts)  edet *= (edet>threshold(id, 4) ? 1 : 0);
+	  if (correctCuts)  edet *= (edet>threshold(id, 3) ? 1 : 0);
 	  if (correctGains) edet *= cDuplicate_->getCorr(t_Run, ieta, depth);
 	  if (correctPhis)  edet *= cFactor_->getCorr(t_Run, id);
 	  

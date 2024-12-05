@@ -145,16 +145,20 @@ void compareCorrFact() {
 		   "rootfiles/CorrFact_lxplus_v8_24CDEF.root",
 		   "Both","Signed","IsoTrack |i#eta| bins","abs");
   */
-  /*
+
   parseSunanda();
 
+  // v11: useClassic
+  // v17: useSunanda (w/ fixed esum3)
+  // v18: useSunanda w/ CalibCorr.C gains + phi
+  // v19: useSunands w/ CalibCorr.C gains + phi + cuts
   compareCorrFacts("rootfiles/CorrFact_Sunanda_24CDEFGHI.root",
-		   "rootfiles/CorrFact_lxplus_v13_24CDEFGHI.root",
+		   "rootfiles/CorrFact_lxplus_v19_24CDEFGHI.root",
 		   "Sunanda","Mikko","IsoTrack: teams","_zoomout",0.,2.,false);
   compareCorrFacts("rootfiles/CorrFact_Sunanda_24CDEFGHI.root",
-		   "rootfiles/CorrFact_lxplus_v13_24CDEFGHI.root",
+		   "rootfiles/CorrFact_lxplus_v19_24CDEFGHI.root",
 		   "Sunanda","Mikko","IsoTrack: teams","_zoomin",0.8,1.3,false);
-
+  /*
   compareCorrFacts("rootfiles/CorrFact_lxplus_v13_24CDEFGHI.root",
 		   "rootfiles/CorrFact_lxplus_v14_24CDEFGHI.root",
 		   "v13_regular","v14_3x5","IsoTrack: containment 3#times5",
@@ -171,11 +175,12 @@ void compareCorrFact() {
 		   "",0.9,1.15);
   */
 
-
+  /*
   compareCorrFacts("rootfiles/CorrFact_lxplus_v15_24CDEFGHI.root",
 		   "rootfiles/CorrFact_lxplus_v14_24CDEFGHI.root",
 		   "v15","v14","IsoTrack: v15 with gain corrections",
 		   "",0.8,1.3);
+  */
 }
 
 // Parse Sunanda's text files into .root 
@@ -226,7 +231,7 @@ void parseSunanda() {
 
   fout->cd();
   if (mh[0]) mh[0]->Write("h_di",TObject::kOverwrite);
-  for (int i = 0; i != mh.size(); ++i) {
+  for (unsigned int i = 0; i != mh.size(); ++i) {
     TH1D *h = mh[i];
     if (!h) continue;
     h->Write(Form("hf_dd_%d",i),TObject::kOverwrite);
