@@ -13,10 +13,15 @@
 #include <iostream>
 
 // Introduce _gainCorrectionRetriever global pointer
-#include "gainCorrections.C"
+//#include "gainCorrections.C"
+
+// Sunanda's CalibCorr.C for gain and phi symmetry corrections
+#include "CalibCorr.C"
 
 double puFactor(int ieta, double pmom, double eHcal, double ediff, bool debug = false);
 
+/*
+// Also defined in CalibCorr.C
 void unpackDetId(unsigned int detId, int& subdet, int& zside, int& ieta, int& iphi, int& depth) {
   // The maskings are defined in DataFormats/DetId/interface/DetId.h
   //                      and in DataFormats/HcalDetId/interface/HcalDetId.h
@@ -34,6 +39,7 @@ void unpackDetId(unsigned int detId, int& subdet, int& zside, int& ieta, int& ip
     iphi = (detId & 0x3FF);
   }
 }
+*/
 
 // From Long Wang, Re: ROOT file with HCalRespCorrs for comparison, 2024/2/1
 double etaVal(int ieta) {
@@ -83,6 +89,9 @@ bool useSunanda = true;
 // Apply gain corrections from Yildiray
 bool correctGains = true;
 
+// Apply phi asymmetry corrections
+bool correctPhis = true;
+
 // IsoTrack per depth and/or single depth
 bool doPerDepth = true;
 bool doSingleDepth = true;
@@ -90,7 +99,7 @@ bool doSingleDepth = true;
 // Limited size regions to include containment
 bool enforce5x5 = false;
 bool enforce3x3 = false;
-bool enforce3x5 = true;
+bool enforce3x5 = false;//true;
 
 // Propagate updated single depths (gains and/or size) to classic single depth
 bool updateSingleDepth = true;
@@ -133,8 +142,9 @@ void IsoTrack::Loop()
 
    cout << "Calling IsoTrack::Loop()..." << endl << flush;
    
-   if (correctGains)    {
-     cout << "Correcting gains on the fly" << endl;
+   if (correctGains || correctPhis)    {
+     if (correctGains) cout << "Correcting gain on the fly" << endl;
+     if (correctPhis)  cout << "Correcting phi asymmetry on the fly" << endl;
      if (doPerDepth && updateSingleDepth && doSingleDepth)
        cout << "  with single depths updated" << endl;
    }
@@ -184,13 +194,38 @@ void IsoTrack::Loop()
    //fChain->SetBranchStatus("t_DetIds",1);
 
    // Do gain corrections
-   if (correctGains) {
+   if (correctGains || correctPhis) {
      fChain->SetBranchStatus("t_Run",1);
    }
 
    // Load gain corrections and activate _gainCorrectionRetriever global pointer
-   gainCorrections();
-   
+   //gainCorrections();
+
+   // Initialize gain corrector from Sunanda
+   CalibDuplicate *cDuplicate_(0);
+   if (correctGains) {
+     string gainfilename = "textfiles/GainFactors2024New.txt";
+     cout << "Read gain corrections from file '"<<gainfilename<<"'\n";
+     cDuplicate_ = new CalibDuplicate(gainfilename.c_str(), 3, false);
+   }
+
+   // Initialize phi asymm correctors from Sunanda. File lists:
+   // run_begin run_end run_textfilename
+   CalibCorr *cFactor_(0);
+   if (correctPhis) {
+     string filelistname = "textfiles/PhiSym2024.txt";
+     cout << "Read phi asymmetry corrections from file list '"<<filelistname<<"'...\n";
+     cFactor_ = new CalibCorr(filelistname.c_str(), 5, false);
+     /*
+     ifstream fphi(phyasymfilelistname.c_str());
+     int run_begin, run_end;
+     string filename;
+     while (fphi >> run_begin >> run_end >> filename) {
+       cout << " runs ["<<run_begin<<","<<run_end<<"] file '"<<filename<<"'\n";
+       cFactor_ = new CalibCorr(run_textfilename, 5, false); // phiasymm
+     }
+     */
+   }
    
    Long64_t nentries = fChain->GetEntriesFast();
 
@@ -337,8 +372,11 @@ void IsoTrack::Loop()
 	for (unsigned int idet = 0; idet != t_DetIds->size(); ++idet) {
 	  unpackDetId((*t_DetIds)[idet], subdet, zside, ieta, iphi, depth);
 	  ieta *= zside;
+	  unsigned int id = (*t_DetIds)[idet];
 	  double edet = (*t_HitEnergies)[idet];
-	  if (correctGains) edet *= _gainCorrectionRetriever->getCorrection(t_Run, ieta, depth);
+	  //if (correctGains) edet *= _gainCorrectionRetriever->getCorrection(t_Run, ieta, depth);
+	  if (correctGains) edet *= cDuplicate_->getCorr(t_Run, ieta, depth);
+	  if (correctPhis)  edet *= cFactor_->getCorr(t_Run, id);
 	  
 	  /*
 	  if (fabs(ieta-t_ieta)>3) { // looking into 5x5? sometimes off-center 
@@ -400,8 +438,11 @@ void IsoTrack::Loop()
 	for (unsigned int idet = 0; idet != t_DetIds1->size(); ++idet) {
 	  unpackDetId((*t_DetIds1)[idet], subdet, zside, ieta, iphi, depth);
 	  ieta *= zside;
+	  unsigned int id = (*t_DetIds1)[idet];
 	  double edet = (*t_HitEnergies1)[idet];
-	  if (correctGains) edet *= _gainCorrectionRetriever->getCorrection(t_Run, ieta, depth);
+	  //if (correctGains) edet *= _gainCorrectionRetriever->getCorrection(t_Run, ieta, depth);
+	  if (correctGains) edet *= cDuplicate_->getCorr(t_Run, ieta, depth);
+	  if (correctPhis)  edet *= cFactor_->getCorr(t_Run, id);
 	  
 	  //int dieta = (ieta-t_ieta)*TMath::Sign(1,t_ieta);
 	  //if (ieta*t_ieta<0) dieta += TMath::Sign(1,t_ieta);
@@ -436,8 +477,11 @@ void IsoTrack::Loop()
 	for (unsigned int idet = 0; idet != t_DetIds3->size(); ++idet) {
 	  unpackDetId((*t_DetIds3)[idet], subdet, zside, ieta, iphi, depth);
 	  ieta *= zside;
+	  unsigned int id = (*t_DetIds3)[idet];
 	  double edet = (*t_HitEnergies3)[idet];
-	  if (correctGains) edet *= _gainCorrectionRetriever->getCorrection(t_Run, ieta, depth);
+	  //if (correctGains) edet *= _gainCorrectionRetriever->getCorrection(t_Run, ieta, depth);
+	  if (correctGains) edet *= cDuplicate_->getCorr(t_Run, ieta, depth);
+	  if (correctPhis)  edet *= cFactor_->getCorr(t_Run, id);
 	  
 	  /*
 	  if (fabs(ieta-t_ieta)>4) { // looking into 7x7?
