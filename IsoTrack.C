@@ -92,6 +92,9 @@ bool correctGains = true;
 // Apply phi asymmetry corrections
 bool correctPhis = true;
 
+// Apply correct thresholds to RecHits
+bool correctCuts = true;
+
 // IsoTrack per depth and/or single depth
 bool doPerDepth = true;
 bool doSingleDepth = true;
@@ -145,6 +148,7 @@ void IsoTrack::Loop()
    if (correctGains || correctPhis)    {
      if (correctGains) cout << "Correcting gain on the fly" << endl;
      if (correctPhis)  cout << "Correcting phi asymmetry on the fly" << endl;
+     if (correctCuts)  cout << "Correcting hit thresholds on the fly" << endl;
      if (doPerDepth && updateSingleDepth && doSingleDepth)
        cout << "  with single depths updated" << endl;
    }
@@ -375,6 +379,7 @@ void IsoTrack::Loop()
 	  unsigned int id = (*t_DetIds)[idet];
 	  double edet = (*t_HitEnergies)[idet];
 	  //if (correctGains) edet *= _gainCorrectionRetriever->getCorrection(t_Run, ieta, depth);
+	  if (correctCuts)  edet *= (edet>threshold(id, 4) ? 1 : 0);
 	  if (correctGains) edet *= cDuplicate_->getCorr(t_Run, ieta, depth);
 	  if (correctPhis)  edet *= cFactor_->getCorr(t_Run, id);
 	  
@@ -441,6 +446,7 @@ void IsoTrack::Loop()
 	  unsigned int id = (*t_DetIds1)[idet];
 	  double edet = (*t_HitEnergies1)[idet];
 	  //if (correctGains) edet *= _gainCorrectionRetriever->getCorrection(t_Run, ieta, depth);
+	  if (correctCuts)  edet *= (edet>threshold(id, 4) ? 1 : 0);
 	  if (correctGains) edet *= cDuplicate_->getCorr(t_Run, ieta, depth);
 	  if (correctPhis)  edet *= cFactor_->getCorr(t_Run, id);
 	  
@@ -480,6 +486,7 @@ void IsoTrack::Loop()
 	  unsigned int id = (*t_DetIds3)[idet];
 	  double edet = (*t_HitEnergies3)[idet];
 	  //if (correctGains) edet *= _gainCorrectionRetriever->getCorrection(t_Run, ieta, depth);
+	  if (correctCuts)  edet *= (edet>threshold(id, 4) ? 1 : 0);
 	  if (correctGains) edet *= cDuplicate_->getCorr(t_Run, ieta, depth);
 	  if (correctPhis)  edet *= cFactor_->getCorr(t_Run, id);
 	  
