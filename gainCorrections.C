@@ -99,7 +99,7 @@ void loadCorrections(const std::string &filename, std::vector<RunCorrection> &ru
 // Correction retriever class with caching
 class CorrectionRetriever {
 public:
-    CorrectionRetriever(const std::vector<RunCorrection> &rcs) : run_corrections(rcs), last_index(-1) {}
+ CorrectionRetriever(const std::vector<RunCorrection> &rcs) : run_corrections(rcs), last_index(-1), last_run(-1) {}
 
     double getCorrection(int run, int eta, int depth) {
         // Corrections only available for [-29,-16] and [16,29] so return 1 elsewhere
@@ -120,8 +120,12 @@ public:
             });
 
         if (it == run_corrections.end() || run < it->start_run || run > it->end_run) {
+	  if (run!=last_run) {
             std::cerr << "Run " << run << " not found in ranges.\n";
-            return 1.0;//-1.0;
+	    if (it != run_corrections.end()) std::cerr << "Nearest range ["<<it->start_run<<","<<it->end_run<<"].\n";
+	  }
+	  last_run = run;
+	  return 1.0;//-1.0;
         }
 
         last_index = std::distance(run_corrections.begin(), it);
@@ -131,6 +135,7 @@ public:
 private:
     std::vector<RunCorrection> run_corrections; // Store a copy instead of a reference
     int last_index;
+    int last_run;
 
     double retrieveCorrection(const RunCorrection &rc, int eta, int depth, int run) {
         // Map eta and depth to indices
@@ -139,13 +144,13 @@ private:
 
         if (eta_index < 0 || eta_index >= 59 || depth_index < 0 || depth_index >= 7) {
             std::cerr << "Invalid eta or depth value: eta=" << eta << ", depth=" << depth << "\n";
-            return -1.0;
+            return 1.0;//-1.0;
         }
 
         double correction = rc.corrections[eta_index][depth_index];
         if (correction < 0.0) {
             std::cerr << "No correction factor available for eta " << eta << ", depth " << depth << " in run " << run << ".\n";
-            return -1.0;
+            return 1.0;//-1.0;
         }
         return correction;
     }

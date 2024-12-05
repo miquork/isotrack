@@ -229,19 +229,19 @@ void drawIsoTracks(string mode, string era, string version) {
       // Set vector length to active depths and exclude ECAL
       int ndepth2 = 4; //
       int jeta = p2->GetXaxis()->GetBinCenter(ieta);
-      // Depths for original case with wide cone
-      /*
+      // Depths for original case (and Sunanda) with wide cone
+
       if (fabs(jeta)==15) ndepth2 = 5;
       if (fabs(jeta)>=16) ndepth2 = 6;
       if (fabs(jeta)>=23) ndepth2 = 7;
-      */
-      // Depths for new 3x5
 
+      // Depths for new 3x5
+      /*
       if (fabs(jeta)==17) ndepth2 = 5;
       if (fabs(jeta)>=18) ndepth2 = 6;
       if (fabs(jeta)>=18) ndepth2 = 6;
       if (fabs(jeta)>=25) ndepth2 = 7;
-
+      */
       TVectorD vec_c(ndepth2);
       TVectorD vec_err(ndepth2);
       TVectorD vec_mu(ndepth2);

@@ -78,6 +78,7 @@ double areaScale3x5(int ieta, int iphi) {
 
 // Override new developments
 bool useClassic = false;//true;
+bool useSunanda = true;
 
 // Apply gain corrections from Yildiray
 bool correctGains = true;
@@ -131,6 +132,25 @@ void IsoTrack::Loop()
    if (fChain == 0) return;
 
    cout << "Calling IsoTrack::Loop()..." << endl << flush;
+   
+   if (correctGains)    {
+     cout << "Correcting gains on the fly" << endl;
+     if (doPerDepth && updateSingleDepth && doSingleDepth)
+       cout << "  with single depths updated" << endl;
+   }
+
+   if (doPerDepth)      cout << "Filling profiles per depth" << endl;
+   if (doSingleDepth)   cout << "Filling profiles without depth" << endl;
+
+   cout << "Analysis mode: ";
+   if (useSunanda)      cout << "useSunanda";
+   else if (useClassic) cout << "useClassic";
+   else {
+     if (enforce5x5)    cout << "enforce5x5";
+     if (enforce3x3)    cout << "enforce3x3";
+     if (enforce3x5)    cout << "enforce3x5";
+   }
+   cout << endl;
    
    fChain->SetBranchStatus("*",0);
 
@@ -345,13 +365,13 @@ void IsoTrack::Loop()
 	  bool is3x3 = (fabs(dieta)<2 && fabs(diphi)<2);
 	  bool is3x5 = (fabs(dieta)<2 && fabs(diphi)<3);
 	  bool noForce = ((!enforce5x5 && !enforce3x3 && !enforce3x5) ||
-			  useClassic);
+			  useClassic || useSunanda);
 	  
 	  bool pass = ((is5x5 && enforce5x5) || (is3x3 && enforce3x3) ||
 		       (is3x5 && enforce3x5) || noForce);
 	
 	  if (pass) {
-	    
+
 	    esum += edet;
 	    e[depth] += edet;
 
@@ -393,7 +413,7 @@ void IsoTrack::Loop()
 	  bool is3x3 = (fabs(dieta)<2 && fabs(diphi)<2);
 	  bool is3x5 = (fabs(dieta)<2 && fabs(diphi)<3);
 	  bool noForce = ((!enforce5x5 && !enforce3x3 && !enforce3x5) ||
-			  useClassic);
+			  useClassic || useSunanda);
 	  
 	  bool pass = ((is5x5 && enforce5x5) || (is3x3 && enforce3x3) ||
 		       (is3x5 && enforce3x5) || noForce);
@@ -448,7 +468,7 @@ void IsoTrack::Loop()
 	  bool is3x5 = (fabs(dieta)<2 && fabs(diphi)<3);
 	  
 	  bool doForce = ((enforce5x5 || enforce3x3 || enforce3x5) &&
-			  !useClassic);
+			  !useClassic && !useSunanda);
 	  bool is5x9 = (fabs(dieta)<3 && fabs(diphi)<7 &&
 			fabs(diphi)!=3 && fabs(diphi)!=4);
 	  //bool is3x9 = (fabs(dieta)<2 && fabs(diphi)<7 &&
@@ -566,6 +586,18 @@ void IsoTrack::Loop()
 	    rcsum = (t_eHcal-(t_eHcal10-t_eHcal)) / (t_p - t_eMipDR);
 	    epu = epu1;
 	  }
+	  
+	  if (useSunanda) {
+	    // esum=etot in Sunanda's code, t_p=pmom
+	    double ediff = esum3 - esum1;
+	    double ehcal = esum * puFactor(t_ieta, t_p, esum, ediff);
+	    // ehcal = esum - k * ediff
+	    double k = (ediff>0 ? (esum - ehcal) / ediff : 1);
+	    double epu3 = k * (e3[i] - e1[i]);
+	    rc = (e[i] - epu3) / (t_p - t_eMipDR);
+	    epu = k * ediff;
+	    rcsum = (esum - epu) / (t_p - t_eMipDR);
+	  }
 
 	  h3raw->Fill(t_ieta, depth, e[i] / (t_p - t_eMipDR));
 	  h3pu1->Fill(t_ieta, depth, epu / (t_p - t_eMipDR));
@@ -608,9 +640,20 @@ void IsoTrack::Loop()
 	double epu3 = (t_eHcal30-t_eHcal10)*0.5;
 	double epu = (esum3 - esum) * areaScale;
 	double rc = (esum-epu) / (t_p - t_eMipDR);
+
 	if (useClassic) {
 	  epu = epu1;
 	  rc = (t_eHcal-epu1) / (t_p - t_eMipDR);
+	}
+
+	if (useSunanda) {
+	  // esum=etot in Sunanda's code, t_p=pmom
+	  double ediff = esum3 - esum1;
+	  double ehcal = esum * puFactor(t_ieta, t_p, esum, ediff);
+	  // ehcal = esum - k * ediff
+	  double k = (ediff>0 ? (esum - ehcal) / ediff : 1);
+	  epu = k * ediff;
+	  rc = (esum - epu) / (t_p - t_eMipDR);
 	}
 	
 	h2raw->Fill(t_ieta, t_eHcal / (t_p - t_eMipDR));
