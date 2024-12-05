@@ -93,7 +93,7 @@ bool enforce3x3 = false;
 bool enforce3x5 = true;
 
 // Propagate updated single depths (gains and/or size) to classic single depth
-bool updateSingleDepth = false;//true;
+bool updateSingleDepth = true;
 
 // Check if (classic, non-updated) esum and branches are consistent
 bool checkConsistency = true;
@@ -480,9 +480,9 @@ void IsoTrack::Loop()
 	  bool pass = ((is5x9 && enforce5x5) || (is3x9 && enforce3x3) ||
 		       (is3x7 && enforce3x5) || !doForce);
 
-	  bool veto = (((is5x5 && enforce5x5) || (is3x3 && enforce3x3) ||
-			(is3x5 && enforce3x5)) && doForce);
-	  pass = (pass && !veto);
+	  //bool veto = (((is5x5 && enforce5x5) || (is3x3 && enforce3x3) ||
+	  //		(is3x5 && enforce3x5)) && doForce);
+	  //pass = (pass && !veto);
 	  
 	  if (pass) {
 	    
@@ -514,11 +514,11 @@ void IsoTrack::Loop()
 	} // for idet
 
 	bool doForce = ((enforce5x5 || enforce3x3 || enforce3x5) &&
-			!useClassic);
-	if (doForce) { // with veto enabled
-	  esum3 += esum;
-	  for (int i = 0; i != 10; ++i) e3[i] += e[i];
-	}
+			!useClassic && !useSunanda);
+	//if (doForce) { // with veto enabled
+	//esum3 += esum;
+	//for (int i = 0; i != 10; ++i) e3[i] += e[i];
+	//}
 	
 	if (updateSingleDepth) {
 	  t_eHcal = esum;
