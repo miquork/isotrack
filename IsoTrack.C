@@ -16,9 +16,10 @@
 //#include "gainCorrections.C"
 
 // Sunanda's CalibCorr.C for gain and phi symmetry corrections
+// as well as thresholds and puFactor
 #include "CalibCorr.C"
 
-double puFactor(int ieta, double pmom, double eHcal, double ediff, bool debug = false);
+double puFactorCopy(int ieta, double pmom, double eHcal, double ediff, bool debug = false);
 
 /*
 // Also defined in CalibCorr.C
@@ -379,7 +380,7 @@ void IsoTrack::Loop()
 	  unsigned int id = (*t_DetIds)[idet];
 	  double edet = (*t_HitEnergies)[idet];
 	  //if (correctGains) edet *= _gainCorrectionRetriever->getCorrection(t_Run, ieta, depth);
-	  if (correctCuts)  edet *= (edet>threshold(id, 3) ? 1 : 0);
+	  if (correctCuts)  edet *= (edet>threshold(id, 2) ? 1 : 0);
 	  if (correctGains) edet *= cDuplicate_->getCorr(t_Run, ieta, depth);
 	  if (correctPhis)  edet *= cFactor_->getCorr(t_Run, id);
 	  
@@ -446,7 +447,7 @@ void IsoTrack::Loop()
 	  unsigned int id = (*t_DetIds1)[idet];
 	  double edet = (*t_HitEnergies1)[idet];
 	  //if (correctGains) edet *= _gainCorrectionRetriever->getCorrection(t_Run, ieta, depth);
-	  if (correctCuts)  edet *= (edet>threshold(id, 3) ? 1 : 0);
+	  if (correctCuts)  edet *= (edet>threshold(id, 2) ? 1 : 0);
 	  if (correctGains) edet *= cDuplicate_->getCorr(t_Run, ieta, depth);
 	  if (correctPhis)  edet *= cFactor_->getCorr(t_Run, id);
 	  
@@ -486,7 +487,7 @@ void IsoTrack::Loop()
 	  unsigned int id = (*t_DetIds3)[idet];
 	  double edet = (*t_HitEnergies3)[idet];
 	  //if (correctGains) edet *= _gainCorrectionRetriever->getCorrection(t_Run, ieta, depth);
-	  if (correctCuts)  edet *= (edet>threshold(id, 3) ? 1 : 0);
+	  if (correctCuts)  edet *= (edet>threshold(id, 2) ? 1 : 0);
 	  if (correctGains) edet *= cDuplicate_->getCorr(t_Run, ieta, depth);
 	  if (correctPhis)  edet *= cFactor_->getCorr(t_Run, id);
 	  
@@ -641,7 +642,8 @@ void IsoTrack::Loop()
 	  if (useSunanda) {
 	    // esum=etot in Sunanda's code, t_p=pmom
 	    double ediff = esum3 - esum1;
-	    double ehcal = esum * puFactor(t_ieta, t_p, esum, ediff);
+	    double ehcal = esum * puFactor(-8, t_ieta, t_p, esum, ediff);
+	    //double ehcal = esum * puFactorCopy(t_ieta, t_p, esum, ediff);
 	    // ehcal = esum - k * ediff
 	    double k = (ediff>0 ? (esum - ehcal) / ediff : 1);
 	    double epu3 = k * (e3[i] - e1[i]);
@@ -700,7 +702,8 @@ void IsoTrack::Loop()
 	if (useSunanda) {
 	  // esum=etot in Sunanda's code, t_p=pmom
 	  double ediff = esum3 - esum1;
-	  double ehcal = esum * puFactor(t_ieta, t_p, esum, ediff);
+	  double ehcal = esum * puFactor(-8, t_ieta, t_p, esum, ediff);
+	  //double ehcal = esum * puFactorCopy(t_ieta, t_p, esum, ediff);
 	  // ehcal = esum - k * ediff
 	  double k = (ediff>0 ? (esum - ehcal) / ediff : 1);
 	  epu = k * ediff;
@@ -737,7 +740,7 @@ void IsoTrack::Loop()
 // Copied from CalibCorr.C from Sunanda Banerjee
 // type == 8: Run3 MAHI. Deleted all the rest of the code
 //double puFactor(int type, int ieta, double pmom, double eHcal, double ediff, bool debug = false) {
-double puFactor(int ieta, double pmom, double eHcal, double ediff, bool debug) {
+double puFactorCopy(int ieta, double pmom, double eHcal, double ediff, bool debug) {
   
   double fac(1.0);
   if (debug)
@@ -775,7 +778,7 @@ double puFactor(int ieta, double pmom, double eHcal, double ediff, bool debug) {
   if (debug)
     std::cout << " Final factor " << fac << std::endl;
   return fac;
-} // puFactor
+} // puFactorCopy
 
 /*
 void test() {

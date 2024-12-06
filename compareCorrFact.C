@@ -151,12 +151,15 @@ void compareCorrFact() {
   // v11: useClassic
   // v17: useSunanda (w/ fixed esum3)
   // v18: useSunanda w/ CalibCorr.C gains + phi
-  // v19: useSunands w/ CalibCorr.C gains + phi + cuts
+  // v19: useSunanda w/ CalibCorr.C gains + phi + cuts (only worked for HE)
+  // v20: useSunanda w/ CalibCorr.C gains + phi + cuts (fixed for HB also)
+  // v21: useSunanda w/ CalibCorr.C gains + phi + cuts (year 3->2)
+  // v22: useSunanda w/ CalibCorr.C gains + phi + cuts=3 + puFactor
   compareCorrFacts("rootfiles/CorrFact_Sunanda_24CDEFGHI.root",
-		   "rootfiles/CorrFact_lxplus_v19_24CDEFGHI.root",
+		   "rootfiles/CorrFact_lxplus_v22_24CDEFGHI.root",
 		   "Sunanda","Mikko","IsoTrack: teams","_zoomout",0.,2.,false);
   compareCorrFacts("rootfiles/CorrFact_Sunanda_24CDEFGHI.root",
-		   "rootfiles/CorrFact_lxplus_v19_24CDEFGHI.root",
+		   "rootfiles/CorrFact_lxplus_v22_24CDEFGHI.root",
 		   "Sunanda","Mikko","IsoTrack: teams","_zoomin",0.8,1.3,false);
   /*
   compareCorrFacts("rootfiles/CorrFact_lxplus_v13_24CDEFGHI.root",
