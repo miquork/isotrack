@@ -365,7 +365,7 @@ void IsoTrack::Loop()
       if (jentry%100000==0) cout << "." << flush;
 
       // Timers to estimate finish time
-      if (jentry==0) { laptime.Start(); nlap = jentry;}
+      if (jentry==0) { fulltime.Start(); laptime.Start(); nlap = jentry;}
       else if (jentry==100000 || jentry==1000000 || jentry%5000000==0 ||
 	       jentry==nentries-1) {
 
@@ -386,6 +386,8 @@ void IsoTrack::Loop()
         cout << "Estimated completion time (from last lap): " << estimated_completion_time.AsSQLString() << endl;
         //
         laptime.Reset(); nlap = jentry;
+	fulltime.Continue();
+	laptime.Continue();
       } // timers
       
       bool ok = ((t_selectTk) && (t_qltyMissFlag) && (t_hmaxNearP < 10.0) && (t_eMipDR < 1.0) && (t_mindR1 > 1.0));

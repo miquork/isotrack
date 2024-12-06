@@ -46,17 +46,17 @@ public :
    Double_t        t_mindR1;
    Double_t        t_mindR2;
    Double_t        t_eMipDR;
-   Double_t        t_eMipDR2;
-   Double_t        t_eMipDR3;
-   Double_t        t_eMipDR4;
-   Double_t        t_eMipDR5;
+  //Double_t        t_eMipDR2;
+  //Double_t        t_eMipDR3;
+  //Double_t        t_eMipDR4;
+  //Double_t        t_eMipDR5;
    Double_t        t_eHcal;
    Double_t        t_eHcal10;
    Double_t        t_eHcal30;
    Double_t        t_hmaxNearP;
-   Double_t        t_emaxNearP;
-   Double_t        t_eAnnular;
-   Double_t        t_hAnnular;
+  //Double_t        t_emaxNearP;
+  //Double_t        t_eAnnular;
+  //Double_t        t_hAnnular;
    Double_t        t_rhoh;
    Bool_t          t_selectTk;
    Bool_t          t_qltyFlag;
@@ -93,17 +93,17 @@ public :
    TBranch        *b_t_mindR1;   //!
    TBranch        *b_t_mindR2;   //!
    TBranch        *b_t_eMipDR;   //!
-   TBranch        *b_t_eMipDR2;   //!
-   TBranch        *b_t_eMipDR3;   //!
-   TBranch        *b_t_eMipDR4;   //!
-   TBranch        *b_t_eMipDR5;   //!
+  //TBranch        *b_t_eMipDR2;   //!
+  //TBranch        *b_t_eMipDR3;   //!
+  //TBranch        *b_t_eMipDR4;   //!
+  //TBranch        *b_t_eMipDR5;   //!
    TBranch        *b_t_eHcal;   //!
    TBranch        *b_t_eHcal10;   //!
    TBranch        *b_t_eHcal30;   //!
    TBranch        *b_t_hmaxNearP;   //!
-   TBranch        *b_t_emaxNearP;   //!
-   TBranch        *b_t_eAnnular;   //!
-   TBranch        *b_t_hAnnular;   //!
+  //TBranch        *b_t_emaxNearP;   //!
+  //TBranch        *b_t_eAnnular;   //!
+  //TBranch        *b_t_hAnnular;   //!
    TBranch        *b_t_rhoh;   //!
    TBranch        *b_t_selectTk;   //!
    TBranch        *b_t_qltyFlag;   //!
@@ -218,17 +218,17 @@ void IsoTrack::Init(TTree *tree)
    fChain->SetBranchAddress("t_mindR1", &t_mindR1, &b_t_mindR1);
    fChain->SetBranchAddress("t_mindR2", &t_mindR2, &b_t_mindR2);
    fChain->SetBranchAddress("t_eMipDR", &t_eMipDR, &b_t_eMipDR);
-   fChain->SetBranchAddress("t_eMipDR2", &t_eMipDR2, &b_t_eMipDR2);
-   fChain->SetBranchAddress("t_eMipDR3", &t_eMipDR3, &b_t_eMipDR3);
-   fChain->SetBranchAddress("t_eMipDR4", &t_eMipDR4, &b_t_eMipDR4);
-   fChain->SetBranchAddress("t_eMipDR5", &t_eMipDR5, &b_t_eMipDR5);
+   //fChain->SetBranchAddress("t_eMipDR2", &t_eMipDR2, &b_t_eMipDR2);
+   //fChain->SetBranchAddress("t_eMipDR3", &t_eMipDR3, &b_t_eMipDR3);
+   //fChain->SetBranchAddress("t_eMipDR4", &t_eMipDR4, &b_t_eMipDR4);
+   //fChain->SetBranchAddress("t_eMipDR5", &t_eMipDR5, &b_t_eMipDR5);
    fChain->SetBranchAddress("t_eHcal", &t_eHcal, &b_t_eHcal);
    fChain->SetBranchAddress("t_eHcal10", &t_eHcal10, &b_t_eHcal10);
    fChain->SetBranchAddress("t_eHcal30", &t_eHcal30, &b_t_eHcal30);
    fChain->SetBranchAddress("t_hmaxNearP", &t_hmaxNearP, &b_t_hmaxNearP);
-   fChain->SetBranchAddress("t_emaxNearP", &t_emaxNearP, &b_t_emaxNearP);
-   fChain->SetBranchAddress("t_eAnnular", &t_eAnnular, &b_t_eAnnular);
-   fChain->SetBranchAddress("t_hAnnular", &t_hAnnular, &b_t_hAnnular);
+   //fChain->SetBranchAddress("t_emaxNearP", &t_emaxNearP, &b_t_emaxNearP);
+   //fChain->SetBranchAddress("t_eAnnular", &t_eAnnular, &b_t_eAnnular);
+   //fChain->SetBranchAddress("t_hAnnular", &t_hAnnular, &b_t_hAnnular);
    fChain->SetBranchAddress("t_rhoh", &t_rhoh, &b_t_rhoh);
    fChain->SetBranchAddress("t_selectTk", &t_selectTk, &b_t_selectTk);
    fChain->SetBranchAddress("t_qltyFlag", &t_qltyFlag, &b_t_qltyFlag);
