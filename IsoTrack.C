@@ -90,13 +90,16 @@ bool useClassic = false;//true;
 bool useSunanda = true;
 
 // Apply gain corrections from Yildiray
-bool correctGains = true;
+bool correctGains = false;//true;
 
 // Apply phi asymmetry corrections
-bool correctPhis = true;
+bool correctPhis = false;//true;
 
 // Apply correct thresholds to RecHits
 bool correctCuts = true;
+
+// Test t_detIds3/getWeight bug
+bool testWeightBug = false;//true;
 
 // IsoTrack per depth and/or single depth
 bool doPerDepth = true;
@@ -525,6 +528,7 @@ void IsoTrack::Loop()
 	  if (correctCuts)  edet *= (edet>threshold(id, 3) ? 1 : 0);
 	  if (correctGains) edet *= cDuplicate_->getCorr(t_Run, ieta, depth);
 	  if (correctPhis)  edet *= cFactor_->getCorr(t_Run, id);
+	  if (testWeightBug) edet *= cDuplicate_->getWeight(id);
 	  
 	  /*
 	  if (fabs(ieta-t_ieta)>4) { // looking into 7x7?
@@ -677,7 +681,7 @@ void IsoTrack::Loop()
 	  if (useSunanda) {
 	    // esum=etot in Sunanda's code, t_p=pmom
 	    double ediff = esum3 - esum1;
-	    double ehcal = esum * puFactor(-8, t_ieta, t_p, esum, ediff);
+	    double ehcal = esum * puFactor(+8, t_ieta, t_p, esum, ediff);
 	    //double ehcal = esum * puFactorCopy(t_ieta, t_p, esum, ediff);
 	    // ehcal = esum - k * ediff
 	    double k = (ediff>0 ? (esum - ehcal) / ediff : 1);
@@ -737,7 +741,7 @@ void IsoTrack::Loop()
 	if (useSunanda) {
 	  // esum=etot in Sunanda's code, t_p=pmom
 	  double ediff = esum3 - esum1;
-	  double ehcal = esum * puFactor(-8, t_ieta, t_p, esum, ediff);
+	  double ehcal = esum * puFactor(+8, t_ieta, t_p, esum, ediff);
 	  //double ehcal = esum * puFactorCopy(t_ieta, t_p, esum, ediff);
 	  // ehcal = esum - k * ediff
 	  double k = (ediff>0 ? (esum - ehcal) / ediff : 1);
