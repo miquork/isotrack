@@ -3,6 +3,8 @@
 #include <TH2.h>
 #include <TStyle.h>
 #include <TCanvas.h>
+#include <TStopwatch.h>
+#include <TDatime.h>
 
 #include <TProfile2D.h>
 #include <TProfile3D.h>
@@ -166,6 +168,12 @@ void IsoTrack::Loop()
      if (enforce3x5)    cout << "enforce3x5";
    }
    cout << endl;
+
+   // Set up timers to see progress. Full 2024 takes about 25 minutes
+   TStopwatch fulltime, laptime;
+   fulltime.Start();
+   TDatime time_now, estimated_completion_time;
+   int nlap(0);
    
    fChain->SetBranchStatus("*",0);
 
@@ -232,10 +240,10 @@ void IsoTrack::Loop()
      */
    }
    
-   Long64_t nentries = fChain->GetEntriesFast();
+   Long64_t nentries = fChain->GetEntries();//fChain->GetEntriesFast();
 
    cout << "Opening output file IsoTrack.root" << endl << flush;
-   cout << "Starting loop";
+   cout << "Starting loop over "<<nentries<<" events\n";
    TFile *fout = new TFile("IsoTrack.root","RECREATE");
 
    // Depth-independent results
@@ -353,7 +361,32 @@ void IsoTrack::Loop()
       nb = fChain->GetEntry(jentry);   nbytes += nb;
       // if (Cut(ientry) < 0) continue;
 
-      if (jentry%10000==0) cout << "." << flush;
+      // Progress indicator on the screen
+      if (jentry%100000==0) cout << "." << flush;
+
+      // Timers to estimate finish time
+      if (jentry==0) { laptime.Start(); nlap = jentry;}
+      else if (jentry==100000 || jentry==1000000 || jentry%5000000==0 ||
+	       jentry==nentries-1) {
+
+	nlap = jentry-nlap;
+	double events_per_second = (double)jentry / fulltime.RealTime();
+	double laps_per_second = (double)nlap / laptime.RealTime();
+	double entries_to_go = nentries - jentry;
+        cout << Form("\nEstimated remaining runtime:  %1.0f sec. "
+                     " (%1.0f sec. from last %d)\n",
+		     entries_to_go / events_per_second,
+		     entries_to_go / laps_per_second, nlap)
+             << flush;
+
+	time_now.Set();
+        estimated_completion_time.Set(time_now.Convert() + entries_to_go / events_per_second);
+        cout << "Estimated completion time (from all events): " << estimated_completion_time.AsSQLString() << endl;
+	estimated_completion_time.Set(time_now.Convert() + entries_to_go / laps_per_second);
+        cout << "Estimated completion time (from last lap): " << estimated_completion_time.AsSQLString() << endl;
+        //
+        laptime.Reset(); nlap = jentry;
+      } // timers
       
       bool ok = ((t_selectTk) && (t_qltyMissFlag) && (t_hmaxNearP < 10.0) && (t_eMipDR < 1.0) && (t_mindR1 > 1.0));
       if (!ok) continue;
@@ -380,7 +413,7 @@ void IsoTrack::Loop()
 	  unsigned int id = (*t_DetIds)[idet];
 	  double edet = (*t_HitEnergies)[idet];
 	  //if (correctGains) edet *= _gainCorrectionRetriever->getCorrection(t_Run, ieta, depth);
-	  if (correctCuts)  edet *= (edet>threshold(id, 2) ? 1 : 0);
+	  if (correctCuts)  edet *= (edet>threshold(id, 3) ? 1 : 0);
 	  if (correctGains) edet *= cDuplicate_->getCorr(t_Run, ieta, depth);
 	  if (correctPhis)  edet *= cFactor_->getCorr(t_Run, id);
 	  
@@ -447,7 +480,7 @@ void IsoTrack::Loop()
 	  unsigned int id = (*t_DetIds1)[idet];
 	  double edet = (*t_HitEnergies1)[idet];
 	  //if (correctGains) edet *= _gainCorrectionRetriever->getCorrection(t_Run, ieta, depth);
-	  if (correctCuts)  edet *= (edet>threshold(id, 2) ? 1 : 0);
+	  if (correctCuts)  edet *= (edet>threshold(id, 3) ? 1 : 0);
 	  if (correctGains) edet *= cDuplicate_->getCorr(t_Run, ieta, depth);
 	  if (correctPhis)  edet *= cFactor_->getCorr(t_Run, id);
 	  
@@ -487,7 +520,7 @@ void IsoTrack::Loop()
 	  unsigned int id = (*t_DetIds3)[idet];
 	  double edet = (*t_HitEnergies3)[idet];
 	  //if (correctGains) edet *= _gainCorrectionRetriever->getCorrection(t_Run, ieta, depth);
-	  if (correctCuts)  edet *= (edet>threshold(id, 2) ? 1 : 0);
+	  if (correctCuts)  edet *= (edet>threshold(id, 3) ? 1 : 0);
 	  if (correctGains) edet *= cDuplicate_->getCorr(t_Run, ieta, depth);
 	  if (correctPhis)  edet *= cFactor_->getCorr(t_Run, id);
 	  

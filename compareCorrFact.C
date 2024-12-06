@@ -154,7 +154,8 @@ void compareCorrFact() {
   // v19: useSunanda w/ CalibCorr.C gains + phi + cuts (only worked for HE)
   // v20: useSunanda w/ CalibCorr.C gains + phi + cuts (fixed for HB also)
   // v21: useSunanda w/ CalibCorr.C gains + phi + cuts (year 3->2)
-  // v22: useSunanda w/ CalibCorr.C gains + phi + cuts=3 + puFactor
+  // v22: useSunanda w/ CalibCorr.C gains + phi + cuts=2 + puFactor
+  // v23: useSunanda w/ CalibCorr.C gains + phi + cuts=3 + puFactor
   compareCorrFacts("rootfiles/CorrFact_Sunanda_24CDEFGHI.root",
 		   "rootfiles/CorrFact_lxplus_v22_24CDEFGHI.root",
 		   "Sunanda","Mikko","IsoTrack: teams","_zoomout",0.,2.,false);

@@ -104,16 +104,16 @@ void mk_IsoTrack(string era = "24F", string version = "local") {
   // Hybridize correction: use per-depth corrections vs |eta| for x2 statistics,
   // and depth-independent for asymmetry (and time-dependence)
   if (era=="24CDEFGHI") {
-    //gROOT->ProcessLine(".L hybridCorrFact.C+g");
-    hybridCorrFact("rootfiles/CorrFact_hybrid_lxplus_v22_24CDEFGHI.root",
-		   "rootfiles/CorrFact_lxplus_v22_24CDEFGHI.root",
-		   "rootfiles/CorrFact_abs_lxplus_v22_24CDEFGHI.root");
-    hybridCorrFact("rootfiles/CorrFact_even_hybrid_lxplus_v22_24CDEFGHI.root",
-		   "rootfiles/CorrFact_even_lxplus_v22_24CDEFGHI.root",
-		   "rootfiles/CorrFact_even_abs_lxplus_v22_24CDEFGHI.root");
-    hybridCorrFact("rootfiles/CorrFact_odd_hybrid_lxplus_v22_24CDEFGHI.root",
-		   "rootfiles/CorrFact_odd_lxplus_v22_24CDEFGHI.root",
-		   "rootfiles/CorrFact_odd_abs_lxplus_v22_24CDEFGHI.root");
+    //gROOT->ProcessLine(".L hybridCorrFact.C);
+    hybridCorrFact("rootfiles/CorrFact_hybrid_lxplus_v23_24CDEFGHI.root",
+		   "rootfiles/CorrFact_lxplus_v23_24CDEFGHI.root",
+		   "rootfiles/CorrFact_abs_lxplus_v23_24CDEFGHI.root");
+    hybridCorrFact("rootfiles/CorrFact_even_hybrid_lxplus_v23_24CDEFGHI.root",
+		   "rootfiles/CorrFact_even_lxplus_v23_24CDEFGHI.root",
+		   "rootfiles/CorrFact_even_abs_lxplus_v23_24CDEFGHI.root");
+    hybridCorrFact("rootfiles/CorrFact_odd_hybrid_lxplus_v23_24CDEFGHI.root",
+		   "rootfiles/CorrFact_odd_lxplus_v23_24CDEFGHI.root",
+		   "rootfiles/CorrFact_odd_abs_lxplus_v23_24CDEFGHI.root");
     
     string version2 = "hybrid_"+version;
     drawCorrFact("",era,version2);
