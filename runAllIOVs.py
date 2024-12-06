@@ -8,7 +8,7 @@ import os
 #IOV_list= ['24CDEF']
 IOV_list= ['24CDEFGHI']
 #IOV_list= ['24C','24D','24E','24F','24G','24H','24I','24CDEFGHI']
-version = 'lxplus_v25'
+version = 'lxplus_v26'
 
 #os.system("rm *.so *.d *.pcm")
 os.system("root -l -b -q mk_compile.C")

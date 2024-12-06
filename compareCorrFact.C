@@ -158,11 +158,12 @@ void compareCorrFact() {
   // v23: useSunanda w/ CalibCorr.C gains + phi + cuts=3 + puFactor(-8)
   // v24: useSunanda w/ CalibCorr.C gains + phi + cuts=3 + puFactor(+8) [== v20]
   // v25: useSunanda w/ CalibCorr.C cuts=3 + puFactor(+8) only
+  // v26: useSunanda w/ CalibCorr.C gains + phi + cuts=3 + puFactor(+8) + prevc
   compareCorrFacts("rootfiles/CorrFact_Sunanda_24CDEFGHI.root",
-		   "rootfiles/CorrFact_lxplus_v25_24CDEFGHI.root",
+		   "rootfiles/CorrFact_lxplus_v26_24CDEFGHI.root",
 		   "Sunanda","Mikko","IsoTrack: teams","_zoomout",0.,2.,false);
   compareCorrFacts("rootfiles/CorrFact_Sunanda_24CDEFGHI.root",
-		   "rootfiles/CorrFact_lxplus_v25_24CDEFGHI.root",
+		   "rootfiles/CorrFact_lxplus_v26_24CDEFGHI.root",
 		   "Sunanda","Mikko","IsoTrack: teams","_zoomin",0.8,1.3,false);
   /*
   compareCorrFacts("rootfiles/CorrFact_lxplus_v13_24CDEFGHI.root",

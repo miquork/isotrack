@@ -23,6 +23,8 @@
 
 double puFactorCopy(int ieta, double pmom, double eHcal, double ediff, bool debug = false);
 
+double getIsoTrackCorr(int run, int ieta, int depth);
+
 /*
 // Also defined in CalibCorr.C
 void unpackDetId(unsigned int detId, int& subdet, int& zside, int& ieta, int& iphi, int& depth) {
@@ -90,16 +92,23 @@ bool useClassic = false;//true;
 bool useSunanda = true;
 
 // Apply gain corrections from Yildiray
-bool correctGains = false;//true;
+bool correctGains = true;
 
 // Apply phi asymmetry corrections
-bool correctPhis = false;//true;
+bool correctPhis = true;
 
 // Apply correct thresholds to RecHits
 bool correctCuts = true;
 
+// Apply IsoTrack HCAL correction (closure)
+bool correctHCAL = true;
+
 // Test t_detIds3/getWeight bug
 bool testWeightBug = false;//true;
+
+// Window to calculate arithmetic mean
+double wmin = 0.15;//0.30;//0.15;//0.30;//0.60;//0.30;//0.15;
+double wmax = 1.85;//1.70;//1.85;//3.00;//1.20;//3.00;//1.85
 
 // IsoTrack per depth and/or single depth
 bool doPerDepth = true;
@@ -122,6 +131,7 @@ bool freePassP3 = false;
 // Merge depths 1+2
 //bool mergeDepths1and2 = false;//true;
 
+TH2D *_h2prevcorr(0);
 void IsoTrack::Loop()
 {
 //   In a ROOT session, you can do:
@@ -151,10 +161,11 @@ void IsoTrack::Loop()
 
    cout << "Calling IsoTrack::Loop()..." << endl << flush;
    
-   if (correctGains || correctPhis)    {
+   if (correctGains || correctPhis || correctCuts || correctHCAL)    {
      if (correctGains) cout << "Correcting gain on the fly" << endl;
      if (correctPhis)  cout << "Correcting phi asymmetry on the fly" << endl;
      if (correctCuts)  cout << "Correcting hit thresholds on the fly" << endl;
+     if (correctHCAL)  cout << "Correcting HCAL on the fly" << endl;
      if (doPerDepth && updateSingleDepth && doSingleDepth)
        cout << "  with single depths updated" << endl;
    }
@@ -261,21 +272,23 @@ void IsoTrack::Loop()
 		  61,-30.5,30.5, 400,0,4);
 
    // Means
+   string sw = Form("(t_p-eMIP) [%1.2f,%1.2f]",wmin,wmax);
+   const char *cw = sw.c_str();
    TProfile *praw, *ppu1, *ppu3, *pmip, *pc, *pc_even, *pc_odd;
-   praw = new TProfile("praw",";ieta;t_eHcal/(t_p-eMIP) [0.15,1.85]",
+   praw = new TProfile("praw",Form(";ieta;t_eHcal/%s",cw),
 		       61,-30.5,30.5);
-   ppu1 = new TProfile("ppu1",";ieta;(t_eHcal10-t_eHcal)/(t_p-eMIP)"
-		       " [0.15,1.85]", 61,-30.5,30.5);
-   ppu3 = new TProfile("ppu3",";ieta;(t_eHcal30-t_eHcal10)/(t_p-eMIP)"
-		       " [0.15,1.85]", 61,-30.5,30.5);
-   pmip = new TProfile("pmip",";ieta;t_eMipDR/(t_p-eMIP)"
-		       " [0.15,1.85]", 61,-30.5,30.5);   
-   pc = new TProfile("pc",";ieta;(t_eHcal-ePU)/(t_p-eMIP) [0.15,1.85]",
+   ppu1 = new TProfile("ppu1",Form(";ieta;(t_eHcal10-t_eHcal)/%s",cw),
+		       61,-30.5,30.5);
+   ppu3 = new TProfile("ppu3",Form(";ieta;(t_eHcal30-t_eHcal10)/%s",cw),
+		       61,-30.5,30.5);
+   pmip = new TProfile("pmip",Form(";ieta;t_eMipDR/%s",cw),
+		       61,-30.5,30.5);   
+   pc = new TProfile("pc",Form(";ieta;(t_eHcal-ePU)/%s",cw),
 		     61,-30.5,30.5);
-   pc_even = new TProfile("pc_even",";ieta;(t_eHcal-ePU)/(t_p-eMIP)"
-			  " [0.15,1.85]", 61,-30.5,30.5);
-   pc_odd = new TProfile("pc_odd",";ieta;(t_eHcal-ePU)/(t_p-eMIP)"
-			 " [0.15,1.85]", 61,-30.5,30.5);
+   pc_even = new TProfile("pc_even",Form(";ieta;(t_eHcal-ePU)/%s",cw),
+			  61,-30.5,30.5);
+   pc_odd = new TProfile("pc_odd",Form(";ieta;(t_eHcal-ePU)/%s",cw),
+			 61,-30.5,30.5);
 
    // Same exercise now per depth
    // Depth=0 for ECAL (MIP or early shower)
@@ -287,28 +300,32 @@ void IsoTrack::Loop()
    h3c = new TH3D("h3c",";ieta;depth;(t_eHcal-ePU)/(t_p-eMIP)",
 		  61,-30.5,30.5, 10,-0.5,9.5, 400,0,4);
 
+   // Previous correction
+   _h2prevcorr = new TH2D("h2prevcorr",";ieta;depth;Correction Factor",
+			  61,-30.5,30.5, 10,-0.5,9.5);
+   
    // Means
    TProfile2D *p2raw, *p2pu1, *p2c, *p2c_even, *p2c_odd;
-   p2raw = new TProfile2D("p2raw",";ieta;depth;t_eHcal/(t_p-eMIP) [0.15,1.85]",
+   p2raw = new TProfile2D("p2raw",Form(";ieta;depth;t_eHcal/%s",cw),
 			  61,-30.5,30.5, 10,-0.5,9.5);
-   p2pu1 = new TProfile2D("p2pu1",";ieta;depth;(t_eHcal10-t_eHcal)/(t_p-eMIP)"
-			  " [0.15,1.85]", 61,-30.5,30.5, 10,-0.5,9.5);
-   p2c = new TProfile2D("p2c",";ieta;depth;(t_eHcal-ePU)/(t_p-eMIP)"
-			" [0.15,1.85]", 61,-30.5,30.5, 10,-0.5,9.5);
-   p2c_even = new TProfile2D("p2c_even",";ieta;depth;(t_eHcal-ePU)/(t_p-eMIP)"
-			     " [0.15,1.85]", 61,-30.5,30.5, 10,-0.5,9.5);
-   p2c_odd = new TProfile2D("p2c_odd",";ieta;depth;(t_eHcal-ePU)/(t_p-eMIP)"
-			    " [0.15,1.85]", 61,-30.5,30.5, 10,-0.5,9.5);
+   p2pu1 = new TProfile2D("p2pu1",Form(";ieta;depth;(t_eHcal10-t_eHcal)/%s",cw),
+			  61,-30.5,30.5, 10,-0.5,9.5);
+   p2c = new TProfile2D("p2c",Form(";ieta;depth;(t_eHcal-ePU)/%s",cw),
+			61,-30.5,30.5, 10,-0.5,9.5);
+   p2c_even = new TProfile2D("p2c_even",Form(";ieta;depth;(t_eHcal-ePU)/%s",cw),
+			     61,-30.5,30.5, 10,-0.5,9.5);
+   p2c_odd = new TProfile2D("p2c_odd",Form(";ieta;depth;(t_eHcal-ePU)/%s",cw),
+			    61,-30.5,30.5, 10,-0.5,9.5);
 
    // Depth Covariances
    TProfile3D *p3c, *p3c_even, *p3c_odd;
-   p3c = new TProfile3D("p3c",";ieta;depth;depth;(t_eHcal-ePU)/(t_p-eMIP) "
-			"[0.15,1.85]", 61,-30.5,30.5, 10,-0.5,9.5, 10,-0.5,9.5);
-   p3c_even = new TProfile3D("p3c_even",";ieta;depth;depth;"
-			     "(t_eHcal-ePU)/(t_p-eMIP) [0.15,1.85]",
+   p3c = new TProfile3D("p3c",Form(";ieta;depth;depth;(t_eHcal-ePU)/%s",cw),
+			61,-30.5,30.5, 10,-0.5,9.5, 10,-0.5,9.5);
+   p3c_even = new TProfile3D("p3c_even",
+			     Form(";ieta;depth;depth;(t_eHcal-ePU)/%s",cw),
 			     61,-30.5,30.5, 10,-0.5,9.5, 10,-0.5,9.5);
-   p3c_odd = new TProfile3D("p3c_odd",";ieta;depth;depth;"
-			    "(t_eHcal-ePU)/(t_p-eMIP) [0.15,1.85]",
+   p3c_odd = new TProfile3D("p3c_odd",
+			    Form(";ieta;depth;depth;(t_eHcal-ePU)/%s",cw),
 			    61,-30.5,30.5, 10,-0.5,9.5, 10,-0.5,9.5);
 
    // Checking shape and energy distribution of isolation cone
@@ -421,6 +438,7 @@ void IsoTrack::Loop()
 	  if (correctCuts)  edet *= (edet>threshold(id, 3) ? 1 : 0);
 	  if (correctGains) edet *= cDuplicate_->getCorr(t_Run, ieta, depth);
 	  if (correctPhis)  edet *= cFactor_->getCorr(t_Run, id);
+	  if (correctHCAL)  edet *= getIsoTrackCorr(t_Run, ieta, depth);
 	  
 	  /*
 	  if (fabs(ieta-t_ieta)>3) { // looking into 5x5? sometimes off-center 
@@ -488,6 +506,7 @@ void IsoTrack::Loop()
 	  if (correctCuts)  edet *= (edet>threshold(id, 3) ? 1 : 0);
 	  if (correctGains) edet *= cDuplicate_->getCorr(t_Run, ieta, depth);
 	  if (correctPhis)  edet *= cFactor_->getCorr(t_Run, id);
+	  if (correctHCAL)  edet *= getIsoTrackCorr(t_Run, ieta, depth);
 	  
 	  //int dieta = (ieta-t_ieta)*TMath::Sign(1,t_ieta);
 	  //if (ieta*t_ieta<0) dieta += TMath::Sign(1,t_ieta);
@@ -528,6 +547,7 @@ void IsoTrack::Loop()
 	  if (correctCuts)  edet *= (edet>threshold(id, 3) ? 1 : 0);
 	  if (correctGains) edet *= cDuplicate_->getCorr(t_Run, ieta, depth);
 	  if (correctPhis)  edet *= cFactor_->getCorr(t_Run, id);
+	  if (correctHCAL)  edet *= getIsoTrackCorr(t_Run, ieta, depth);
 	  if (testWeightBug) edet *= cDuplicate_->getWeight(id);
 	  
 	  /*
@@ -695,7 +715,7 @@ void IsoTrack::Loop()
 	  h3pu1->Fill(t_ieta, depth, epu / (t_p - t_eMipDR));
 	  h3c->Fill(t_ieta, depth, rc);
 	  
-	  if (rcsum>0.15 && rcsum<1.85) {
+	  if (rcsum>wmin && rcsum<wmax) {
 	    p2raw->Fill(t_ieta, depth, e[i] / (t_p - t_eMipDR));
 	    p2pu1->Fill(t_ieta, depth, epu / (t_p - t_eMipDR));
 	    p2c->Fill(t_ieta, depth, rc);
@@ -711,7 +731,7 @@ void IsoTrack::Loop()
 	// Calculate covariance
 	for (int i = 0; i != ndepth; ++i) {
 	  for (int j = 0; j != ndepth; ++j) {
-	    if (rcsum>0.15 && rcsum<1.85) {
+	    if (rcsum>wmin && rcsum<wmax) {
 	      p3c->Fill(t_ieta, i, j, vrc[i]*vrc[j]);
 	      if (jentry%2==0) p3c_even->Fill(t_ieta, i, j, vrc[i]*vrc[j]);
 	      if (jentry%2==1) p3c_odd->Fill(t_ieta, i, j, vrc[i]*vrc[j]);
@@ -755,7 +775,7 @@ void IsoTrack::Loop()
 	h2mip->Fill(t_ieta, t_eMipDR / (t_p - t_eMipDR));
 	h2c->Fill(t_ieta, rc);
 	
-	if (rc>0.15 && rc<1.85) {
+	if (rc>wmin && rc<wmax) {
 	  praw->Fill(t_ieta, t_eHcal / (t_p - t_eMipDR));
 	  ppu1->Fill(t_ieta, epu / (t_p - t_eMipDR));
 	  ppu3->Fill(t_ieta, epu3 / (t_p - t_eMipDR));
@@ -829,3 +849,44 @@ void test() {
                                                          : puFactorRho(puCorr_, t_ieta, t_rhoh, etot))));
 }
 */
+
+double _isotrack[59][7]; bool _isotrack_isset(false);
+double getIsoTrackCorr(int run, int ieta, int depth) {
+
+  // Load corrections from file. Make smarter and using run range in the future
+  if (_isotrack_isset==false) {
+    TFile *f = new TFile("rootfiles/CorrFact_hybrid_lxplus_v24_24CDEFGHI.root","READ");
+    assert(f && !f->IsZombie());
+    for (int depth = 1; depth != 8; ++depth) {
+      TH1D *h = (TH1D*)f->Get(Form("hf_dd_%d",depth)); assert(h);
+      for (int ieta = -29; ieta != 30; ++ieta) {
+	int i = (ieta+29);
+	int j = (depth-1);
+	int k = h->FindBin(ieta);
+	double corr = h->GetBinContent(k);
+	_isotrack[i][j] = (corr>0.1 ? corr : 1.0);
+      } // for ieta
+    } // for depth
+    f->Close();
+    _isotrack_isset = true;
+
+    // Print corrections
+    cout << endl << "  double isotrack[59][7] = {\n";
+    for (int i = 0; i != 59; ++i) {
+      cout << "    {";
+      for (int j = 0; j != 7; ++j) {
+	double corr = _isotrack[i][j];
+	cout << Form("%s%1.3f", j==0 ? "" : ", ", corr);
+	if (_h2prevcorr) _h2prevcorr->SetBinContent(i+2, j+2, corr);
+      } // for j
+      cout << "}" << (i==29 ? "\n" : ",\n");
+    } // for i
+    cout << "  };\n" << endl;
+  } //_isotrack_isset==false
+
+  if (ieta<-29 || ieta>29 || ieta==0) return 1.0;
+  int i = (ieta+29); i = max(0,min(58,i));
+  int j = (depth-1); j = max(0,min(6,j));
+
+  return _isotrack[i][j];
+} // getIsoTrackCorr

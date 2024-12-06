@@ -62,6 +62,7 @@ void drawIsoTracks(string mode, string era, string version) {
   //double ntrk = h2->Integral();
 
   const char *cm = mode.c_str();
+  TH2D *h2prevcorr = (TH2D*)f->Get("h2prevcorr"); // only since v26
   TProfile *p = (TProfile*)f->Get(Form("pc%s",cm));
   TProfile2D *p2 = (TProfile2D*)f->Get(Form("p2c%s",cm));
   TProfile3D *p3 = (TProfile3D*)f->Get(Form("p3c%s",cm));
@@ -279,8 +280,12 @@ void drawIsoTracks(string mode, string era, string version) {
 	// Save corrections and uncertainties
 	for (int i = 0; i != ndepth2; ++i) {
 	  TH1D *hd = vhdf[i+1];
-	  hd->SetBinContent(ieta, vec_c[i]);
-	  hd->SetBinError(ieta, vec_err[i]);
+	  double prevcorr(1);
+	  if (h2prevcorr) {
+	    prevcorr = h2prevcorr->GetBinContent(ieta, i+2);
+	  }
+	  hd->SetBinContent(ieta, vec_c[i] * prevcorr);
+	  hd->SetBinError(ieta, vec_err[i] * prevcorr);
 	}
 
       }
