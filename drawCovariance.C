@@ -16,6 +16,10 @@ void drawCovariance(int ieta = 0, string era="24F", string version="vX") {
 
   cout << "Running drawCovariance("<<ieta<<",\""<<era
        << ",\""<<version<<"\")..."<<endl<<flush;
+
+  const char *ce = era.c_str();
+  const char *cv = version.c_str();
+  gROOT->ProcessLine(Form(".! mkdir pdf/drawCovariance/%s_%s",cv,ce));
   
   if (ieta==0) {
     for (int i = -27; i != +27+1; ++i) {

@@ -95,7 +95,7 @@ bool useSunanda = true;
 bool correctGains = true;
 
 // Apply phi asymmetry corrections
-bool correctPhis = true;
+bool correctPhis = false;//true; // v30 off
 
 // Apply correct thresholds to RecHits
 bool correctCuts = true;
