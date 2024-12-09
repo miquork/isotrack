@@ -92,10 +92,10 @@ bool useClassic = false;//true;
 bool useSunanda = true;
 
 // Apply gain corrections from Yildiray
-bool correctGains = true;
+bool correctGains = false;//true; // v31 off
 
 // Apply phi asymmetry corrections
-bool correctPhis = false;//true; // v30 off
+bool correctPhis = true; // v30 off
 
 // Apply correct thresholds to RecHits
 bool correctCuts = true;

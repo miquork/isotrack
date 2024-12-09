@@ -161,8 +161,12 @@ void compareCorrFact() {
   // v26: useSunanda w/ CalibCorr.C gains + phi + cuts=3 + puFactor(+8) + prevc
   // v27: useSunanda w/ CalibCorr.C gains + phi + cuts=3 + puFactor + prevc_v26
   // v28: useSunanda w/ CalibCorr.C gains + phi + cuts=3 + puFactor + prevc_v27
-  // v29: v28 with scans over each run (C,D,E,F,G,H,I)
-  
+  // v29: v28 with scans over each run (C,D,E,F,G,H,I; CDEF, GHI; CDEFGHI)
+  // to-do:
+  // v30: v28/29 without phi asymmetry
+  // v31: v28/29 without gains
+  // v32: v28/29 without tresholds
+  // v33: v28/29 with 3x2 approach
   compareCorrFacts("rootfiles/CorrFact_Sunanda_24CDEFGHI.root",
 		   "rootfiles/CorrFact_lxplus_v27_24CDEFGHI.root",
 		   "Sunanda","Mikko","IsoTrack: teams","_zoomout",0.,2.,false);
