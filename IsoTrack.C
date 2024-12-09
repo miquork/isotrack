@@ -855,7 +855,9 @@ double getIsoTrackCorr(int run, int ieta, int depth) {
 
   // Load corrections from file. Make smarter and using run range in the future
   if (_isotrack_isset==false) {
-    TFile *f = new TFile("rootfiles/CorrFact_hybrid_lxplus_v24_24CDEFGHI.root","READ");
+    //TFile *f = new TFile("rootfiles/CorrFact_hybrid_lxplus_v24_24CDEFGHI.root","READ"); // gains+phi+cuts+puFactor, no prevcorr
+    //TFile *f = new TFile("rootfiles/CorrFact_hybrid_lxplus_v26_24CDEFGHI.root","READ"); // gains+phi+cuts+puFactor+prevcorr_v24
+    TFile *f = new TFile("rootfiles/CorrFact_hybrid_lxplus_v27_24CDEFGHI.root","READ"); // gains+phi+cuts+puFactor+prevcorr_v26
     assert(f && !f->IsZombie());
     for (int depth = 1; depth != 8; ++depth) {
       TH1D *h = (TH1D*)f->Get(Form("hf_dd_%d",depth)); assert(h);

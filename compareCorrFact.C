@@ -159,11 +159,15 @@ void compareCorrFact() {
   // v24: useSunanda w/ CalibCorr.C gains + phi + cuts=3 + puFactor(+8) [== v20]
   // v25: useSunanda w/ CalibCorr.C cuts=3 + puFactor(+8) only
   // v26: useSunanda w/ CalibCorr.C gains + phi + cuts=3 + puFactor(+8) + prevc
+  // v27: useSunanda w/ CalibCorr.C gains + phi + cuts=3 + puFactor + prevc_v26
+  // v28: useSunanda w/ CalibCorr.C gains + phi + cuts=3 + puFactor + prevc_v27
+  // v29: v28 with scans over each run (C,D,E,F,G,H,I)
+  
   compareCorrFacts("rootfiles/CorrFact_Sunanda_24CDEFGHI.root",
-		   "rootfiles/CorrFact_lxplus_v26_24CDEFGHI.root",
+		   "rootfiles/CorrFact_lxplus_v27_24CDEFGHI.root",
 		   "Sunanda","Mikko","IsoTrack: teams","_zoomout",0.,2.,false);
   compareCorrFacts("rootfiles/CorrFact_Sunanda_24CDEFGHI.root",
-		   "rootfiles/CorrFact_lxplus_v26_24CDEFGHI.root",
+		   "rootfiles/CorrFact_lxplus_v27_24CDEFGHI.root",
 		   "Sunanda","Mikko","IsoTrack: teams","_zoomin",0.8,1.3,false);
   /*
   compareCorrFacts("rootfiles/CorrFact_lxplus_v13_24CDEFGHI.root",
@@ -188,6 +192,7 @@ void compareCorrFact() {
 		   "v15","v14","IsoTrack: v15 with gain corrections",
 		   "",0.8,1.3);
   */
+
 }
 
 // Parse Sunanda's text files into .root 

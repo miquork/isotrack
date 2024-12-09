@@ -6,9 +6,10 @@ import os
 ##################
 #IOV_list= ['24C','24D','24E','24F']
 #IOV_list= ['24CDEF']
-IOV_list= ['24CDEFGHI']
+#IOV_list= ['24CDEFGHI']
 #IOV_list= ['24C','24D','24E','24F','24G','24H','24I','24CDEFGHI']
-version = 'lxplus_v26'
+IOV_list= ['24CDEF','24GHI','24CDEFGHI']
+version = 'lxplus_v29'
 
 #os.system("rm *.so *.d *.pcm")
 for iov in IOV_list:
