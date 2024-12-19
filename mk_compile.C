@@ -12,4 +12,6 @@
   gROOT->ProcessLine(".L drawCovariance.C+g");
   gROOT->ProcessLine(".L hybridCorrFact.C+g");
 
+  gROOT->ProcessLine(".L IsoTrackV2.C+g");
+
 }
