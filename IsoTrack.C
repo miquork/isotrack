@@ -95,13 +95,13 @@ bool useSunanda = true;
 bool correctGains = false;//true; // v31 off
 
 // Apply phi asymmetry corrections
-bool correctPhis = true; // v30 off
+bool correctPhis = false;//true; // v30 off
 
 // Apply correct thresholds to RecHits
-bool correctCuts = true;
+bool correctCuts = true; // v32 off
 
 // Apply IsoTrack HCAL correction (closure)
-bool correctHCAL = true;
+bool correctHCAL = false;//true;
 
 // Test t_detIds3/getWeight bug
 bool testWeightBug = false;//true;
@@ -373,13 +373,12 @@ void IsoTrack::Loop()
      TProfile3D *p3_3 = new TProfile3D(Form("p3_3_ieta%d",ieta),";#Delta|i#eta|;#Delta|i#phi|;depth", 21,-10.5,10.5, 25,-12.5,12.5, 7,0.5,7.5);
      mp3_3[ieta] = p3_3;
    } // for ietax
+
    
    Long64_t nbytes = 0, nb = 0;
    for (Long64_t jentry=0; jentry<nentries;jentry++) {
       Long64_t ientry = LoadTree(jentry);
       if (ientry < 0) break;
-      nb = fChain->GetEntry(jentry);   nbytes += nb;
-      // if (Cut(ientry) < 0) continue;
 
       // Progress indicator on the screen
       if (jentry%100000==0) cout << "." << flush;
@@ -409,6 +408,14 @@ void IsoTrack::Loop()
 	fulltime.Continue();
 	laptime.Continue();
       } // timers
+
+      // Speedup for PU MC with lots of track below t_p<40
+      b_t_p->GetEntry(ientry); //read only this branch
+      if (t_p<40 || t_p>60) continue;
+      
+      nb = fChain->GetEntry(jentry);   nbytes += nb;
+      // if (Cut(ientry) < 0) continue;
+
       
       bool ok = ((t_selectTk) && (t_qltyMissFlag) && (t_hmaxNearP < 10.0) && (t_eMipDR < 1.0) && (t_mindR1 > 1.0));
       if (!ok) continue;

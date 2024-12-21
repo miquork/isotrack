@@ -30,9 +30,14 @@ void mk_IsoTrack(string era = "24F", string version = "local") {
   bool runLXPLUS = TString(path.c_str()).Contains("/afs/cern.ch/");
 
   cout << "Era "<<era<<", version "<<version<<endl<<flush;
-  
-  TChain *c = new TChain("hcalIsoTrackAnalyzer/CalibTree");
 
+  TString t(era.c_str());
+  TChain *c(0);
+  if (t.Contains("MC"))
+    c = new TChain("hcalIsoTrkAnalyzer/CalibTree");
+  else
+    c = new TChain("hcalIsoTrackAnalyzer/CalibTree");
+  
   const char *ce = era.c_str();
   const char *cv = version.c_str();
   
@@ -105,15 +110,15 @@ void mk_IsoTrack(string era = "24F", string version = "local") {
   // and depth-independent for asymmetry (and time-dependence)
   if (era=="24CDEFGHI") {
     //gROOT->ProcessLine(".L hybridCorrFact.C);
-    hybridCorrFact("rootfiles/CorrFact_hybrid_lxplus_v31_24CDEFGHI.root",
-		   "rootfiles/CorrFact_lxplus_v31_24CDEFGHI.root",
-		   "rootfiles/CorrFact_abs_lxplus_v31_24CDEFGHI.root");
-    hybridCorrFact("rootfiles/CorrFact_even_hybrid_lxplus_v31_24CDEFGHI.root",
-		   "rootfiles/CorrFact_even_lxplus_v31_24CDEFGHI.root",
-		   "rootfiles/CorrFact_even_abs_lxplus_v31_24CDEFGHI.root");
-    hybridCorrFact("rootfiles/CorrFact_odd_hybrid_lxplus_v31_24CDEFGHI.root",
-		   "rootfiles/CorrFact_odd_lxplus_v31_24CDEFGHI.root",
-		   "rootfiles/CorrFact_odd_abs_lxplus_v31_24CDEFGHI.root");
+    hybridCorrFact("rootfiles/CorrFact_hybrid_lxplus_v32_24CDEFGHI.root",
+		   "rootfiles/CorrFact_lxplus_v32_24CDEFGHI.root",
+		   "rootfiles/CorrFact_abs_lxplus_v32_24CDEFGHI.root");
+    hybridCorrFact("rootfiles/CorrFact_even_hybrid_lxplus_v32_24CDEFGHI.root",
+		   "rootfiles/CorrFact_even_lxplus_v32_24CDEFGHI.root",
+		   "rootfiles/CorrFact_even_abs_lxplus_v32_24CDEFGHI.root");
+    hybridCorrFact("rootfiles/CorrFact_odd_hybrid_lxplus_v32_24CDEFGHI.root",
+		   "rootfiles/CorrFact_odd_lxplus_v32_24CDEFGHI.root",
+		   "rootfiles/CorrFact_odd_abs_lxplus_v32_24CDEFGHI.root");
     
     string version2 = "hybrid_"+version;
     drawCorrFact("",era,version2);

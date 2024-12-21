@@ -97,8 +97,16 @@ double areaScale3x5V2(int ieta, int iphi) {
   //if (abs(ieta)==21) return (1./3.*areaScale1+2./3.*areaScale2);
   //if (abs(ieta)>=22) return areaScale2;
 
+  //if (abs(ieta)<=20) return areaScale1;
+  //if (abs(ieta)>=21) return areaScale2;
+
+  // areaScale = 2*sideband / core (#RecHits in |delta_ieta|<=2, 3-4
+  double areaScale1  = 5./4.; // =1.25, |ieta|<=20
+  double areaScale2o = 3./2.; // =1.50, |ieta|>=21, odd iphi
+  double areaScale2e = 2./2.; // =1.00, |ieta|>=21, even iphi
   if (abs(ieta)<=20) return areaScale1;
-  if (abs(ieta)>=21) return areaScale2;
+  if (abs(ieta)>=21 && iphi%2==1) return areaScale2o;
+  if (abs(ieta)>=21 && iphi%2==0) return areaScale2e;
   return 1.5;
 }
 
@@ -238,8 +246,6 @@ void IsoTrackV2::Loop()
    for (Long64_t jentry=0; jentry<nentries;jentry++) {
       Long64_t ientry = LoadTree(jentry);
       if (ientry < 0) break;
-      nb = fChain->GetEntry(jentry);   nbytes += nb;
-      // if (Cut(ientry) < 0) continue;
 
       // Progress indicator on the screen
       if (jentry%100000==0) cout << "." << flush;
@@ -269,6 +275,14 @@ void IsoTrackV2::Loop()
 	fulltime.Continue();
 	laptime.Continue();
       } // timers
+
+      // Speedup for PU MC with lots of track below t_p<40
+      b_t_p->GetEntry(ientry); //read only this branch
+      if (t_p<40 || t_p>60) continue;
+      
+      nb = fChain->GetEntry(jentry);   nbytes += nb;
+      // if (Cut(ientry) < 0) continue;
+
       
       bool ok = ((t_selectTk) && (t_qltyMissFlag) && (t_hmaxNearP < 10.0) && (t_eMipDR < 1.0) && (t_mindR1 > 1.0));
       if (!ok) continue;
