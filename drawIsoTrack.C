@@ -17,20 +17,24 @@
 
 void drawIsoTracks(string mode, string era, string version);
 
-void drawIsoTrack(string era="24F", string version="vX") {
+void drawIsoTrack(string era="24F", string version="vX", bool doEvenOdd=true) {
 
   //drawIsoTracks("_even_wide", era, version);
   //drawIsoTracks("_odd_wide", era, version);
   //drawIsoTracks("_wide", era, version);
 
   if (era=="24CDEFGHI") {
-    drawIsoTracks("_even_abs", era, version);
-    drawIsoTracks("_odd_abs", era, version);
+    if (doEvenOdd) {
+      drawIsoTracks("_even_abs", era, version);
+      drawIsoTracks("_odd_abs", era, version);
+    }
     drawIsoTracks("_abs", era, version);
   }
 
-  drawIsoTracks("_even", era, version);
-  drawIsoTracks("_odd", era, version);
+  if (doEvenOdd) {
+    drawIsoTracks("_even", era, version);
+    drawIsoTracks("_odd", era, version);
+  }
   drawIsoTracks("", era, version);
 
 } // drawIsoTrack
@@ -283,6 +287,7 @@ void drawIsoTracks(string mode, string era, string version) {
 	  double prevcorr(1);
 	  if (h2prevcorr) {
 	    prevcorr = h2prevcorr->GetBinContent(ieta, i+2);
+	    if (prevcorr==0) prevcorr = 1; // safety for empty h2prevcorr
 	  }
 	  hd->SetBinContent(ieta, vec_c[i] * prevcorr);
 	  hd->SetBinError(ieta, vec_err[i] * prevcorr);
