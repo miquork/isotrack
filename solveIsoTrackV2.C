@@ -8,6 +8,20 @@
 
 #include <iostream>
 
+// Map between channel index and (band,width,depth)
+void decodeChannel(const int channel, int &iband, int &iwidth, int &idepth) {
+  const int nband = 2; // (core=0,side=1)
+  const int nwidth = 3; // (delta_ieta=-1,0,1) plus 1
+  const int ndepth = 7; // (depths 1-7) minus 1
+  const int nch = nband*nwidth*ndepth;
+  assert(channel>=0 && channel<nch);
+  
+  iband = channel/(nwidth*ndepth);
+  int rest = channel%(nwidth*ndepth);
+  iwidth = rest/ndepth;
+  idepth = rest%ndepth;
+}
+
 void solveIsoTrackV2() {
 
   TFile *f = new TFile("IsoTrackV2.root","READ");
@@ -30,9 +44,9 @@ void solveIsoTrackV2() {
   //////////////////////////////////////////////////////////////////////
   
   double esum[neta][nband][nwidth][ndepth];
-  //double esume[neta][nband][nwidth][ndepth];
+  double esume[neta][nband][nwidth][ndepth];
   double eprod[neta][nch][nch];
-  //double eprode[neta][nch][nch];
+  double eprode[neta][nch][nch];
   assert(p2->GetNbinsX()==neta);
   assert(p2->GetNbinsY()==nch);
   assert(p3->GetNbinsX()==neta);
@@ -40,133 +54,37 @@ void solveIsoTrackV2() {
   assert(p3->GetNbinsZ()==nch);
   for (int ieta = 0; ieta != neta; ++ieta) {
 
-    // Fast memory access by using fact that arrays are consecutive blocks
-    double *pe = &(esum[ieta][0][0][0]); // pointer to first element per ieta
-  //double *pee = &(esume[ieta][0][0][0]); // pointer to first element per ieta
-    // int ch = (band,i)*nwidth*ndepth + (width,j)*ndepth + (depth,k);
-    // double etot = *(p+ch); // = esum[i][j][k]
     for (int ch = 0; ch != nch; ++ch) {
-      pe[ch] = p2->GetBinContent(ieta+1, ch+1);
-      //pee[ch] = p2->GetBinError(ieta+1, ch+1);
+      int band, width, depth;
+      decodeChannel(ch, band, width, depth);
+      esum[ieta][band][width][depth] = p2->GetBinContent(ieta+1, ch+1);
+      esume[ieta][band][width][depth] = p2->GetBinError(ieta+1, ch+1);
 
       for (int ch2 = 0; ch2 != nch; ++ch2) {
 	eprod[ieta][ch][ch2] = p3->GetBinContent(ieta+1, ch+1, ch2+1);
-	//eprod[ieta][ch][ch2] = p3->GetBinError(ieta+1, ch+1, ch2+1);
+	eprode[ieta][ch][ch2] = p3->GetBinError(ieta+1, ch+1, ch2+1);
       } // for ch2
     } // for ch
   } // for ieta
-
-  /*
-  // Remapping to ieta x (jeta x depth) matrix for response
-  // ([p_i] =) [1] = [R_ij] * [c_j]
-  //double R[neta][nc];
-  TMatrixD R(neta,nc);
-  TVectorD E(nc);
-
-  // Reset matrix elements
-  for (int ieta = 0; ieta != neta; ++ieta) {
-    for (int ic = 0; ic != nc; ++ic) {
-      R[ieta][ic] = 0;
-    } // for depth
-  } // for ieta
-
-  // Reset vector elements
-  for (int ic = 0; ic != nc; ++ic) {
-    E[ic] = 0;
-  } // for ieta
   
-  // Distribute and resum means to corresponding c_i (ieta,depth) element
-  for (int ieta = 0; ieta != neta; ++ieta) {
-    for (int depth = 0; depth != ndepth; ++depth) {
-
-      // Loop over delta_ieta and distribute to correct ieta
-      for (int iw = 0; iw != nwidth; ++iw) {
-
-	// Check that we don't outside bounds for ic
-	if ((ieta+(iw-1))<0 || (ieta+(iw-1))>=neta) continue;
-	
-	int ic = ndepth*(ieta+(iw-1))+depth;
-	// Reminder:   esum[neta][nband=2(core==0,side==1)][nwidth=3][ndepth];
-	double E_tot = esum[ieta][0][iw][depth] - esum[ieta][1][iw][depth];
-	R[ieta][ic] += E_tot; 
-	E[ic] += E_tot;
-	
-      }
-      
-    } // for depth
-  } // for ieta
-
-  // Remapping to (ieta x depth) x (ieta x depth) matrix for covariance
-  // sigma_corr^2 = c_T * V * c
-  //double V[nc][nc];
-  TMatrixD V(nc,nc);
-
-  // Reset matrix elements
-  for (int ic = 0; ic != nc; ++ic) {
-    for (int ic2 = 0; ic2 != nc; ++ic2) {
-      V[ic][ic2] = 0;
-    } // for ic2
-  } // for ic
-
-  // Distribute and resum E_i*E_j products to c_i (ieta,depth) element
-  // Just one loop over ieta, because products non-zero only for ieta==jeta
-  for (int ieta = 0; ieta != neta; ++ieta) {
-    for (int idep = 0; idep != ndepth; ++idep) {
-      for (int jdep = 0; jdep != ndepth; ++jdep) {
-
-	// We now have so many width pairs, that make loops explicit
-	for (int iw = 0; iw != nwidth; ++iw) {
-	  for (int jw = 0; jw != nwidth; ++jw) {
-
-	    // Check that we don't go outside bounds for ic, jc
-	    if ((ieta+(iw-1))<0 || (ieta+(iw-1))>=neta ||
-		(ieta+(jw-1))<0 || (ieta+(jw-1))>=neta) continue;
-
-	    // Map ieta, depth, width to correct c_i
-	    int ic = ndepth*(ieta+(iw-1))+idep;
-	    int jc = ndepth*(ieta+(jw-1))+jdep;
-	    // Reminder: ch = (band)*nwidth*ndepth + (width)*ndepth + (depth);
-	    int ich0 = 0*nband*ndepth + iw*ndepth + idep;
-	    int jch0 = 0*nband*ndepth + jw*ndepth + jdep;
-	    int ich1 = 1*nband*ndepth + iw*ndepth + idep;
-	    int jch1 = 1*nband*ndepth + jw*ndepth + idep;
-	    // E_eff,i*E_eff,j = (E_i0-E_i1)*(E_j0-E_j1)
-	    //                 = E_i0*E_j0-E_i0*E_j1-E_i1*E_j0+E_i1*E_j1
-	    V[ic][jc] +=
-	      eprod[ieta][ich0][jch0] - eprod[ieta][ich0][jch1] -
-	      eprod[ieta][ich1][jch0] + eprod[ieta][ich1][jch1];
-	
-	  } // for jw
-	} // for iw
-	  
-      } // for jdep
-    } // for idep
-  } // for ieta
-
-  // Calculate covariance as E_ij-E_i*Ej
-  for (int ic = 0; ic != nc; ++ic) {
-    for (int jc = 0; jc != nc; ++jc) {
-      V[ic][jc] = V[ic][jc] - E[ic]*E[jc];
-    } // for jc
-  } // for ic
-
-  // Also store normalized matrix for easier checking
-  TMatrixD V_norm(nc,nc);
-  for (int ic = 0; ic != nc; ++ic) {
-    for (int jc = 0; jc != nc; ++jc) {
-      if (V[ic][ic]==0 || V[jc][jc]==0)
-	V_norm[ic][jc] = 0;
-      else
-	V_norm[ic][jc] = V[ic][jc]/sqrt(V[ic][ic]*V[jc][jc]);
-    } // for jc
-  } // for ic
+  // Accessing esum[neta][nch] view
+  double (*esum_flat)[nch] = reinterpret_cast<double (*)[nch]>(esum);
   
-  // Draw matrix as a sanity check
-  //R.Draw("COLZ");
-  //V.Draw("COLZ");
-  V_norm.Draw("COLZ");
-  */
+  // Covariances
+  double as[neta][nch][nch];
+  for (int ieta = 0; ieta != neta; ++ieta) {
+    for (int ch1 = 0; ch1 != nch; ++ch1) {
+      for (int ch2 = 0; ch2 != nch; ++ch2) {
+	
+	double Ex = esum_flat[ieta][ch1];
+	double Ey = esum_flat[ieta][ch1];
+	double Exy = eprod[ieta][ch1][ch2];
+	as[ieta][ch1][ch2] = Exy - Ex*Ey;
+      } // for ch2
+    } // for ch1
+  } // for ieta
 
+  
   /////////////////////////////////////////////////////////////////////////
   // 2024-12-19: index gymnastics overwhelmed me, but o1  managed this:  //
   // https://chatgpt.com/share/67641149-10b4-800f-9461-cd80c7197f5f      //
@@ -245,15 +163,11 @@ void solveIsoTrackV2() {
 	      // sum_beta eprod[i][alpha][beta]*c(...) term:
 	      for (int beta=0; beta<nch; beta++) {
 
-		int ibandAlpha = alpha/(nwidth*ndepth);
-		int ibandBeta = beta/(nwidth*ndepth);
-		
 		double val = eprod[i][alpha][beta]; 
-		// beta channel corresponds to some (iband2, iwidth2, idepth2)
-		int iband2 = beta/(nwidth*ndepth);
-		int rest = beta%(nwidth*ndepth);
-		int iwidth2 = rest/ndepth;
-		int idepth2 = rest%ndepth;
+
+		int iband2, iwidth2, idepth2;
+		decodeChannel(beta, iband2, iwidth2, idepth2);
+		
 		int ieta_off2 = i + (iwidth2 - 1);
 		if (ieta_off2<0 || ieta_off2>=neta) continue;
 		int ccol = cIndex(ieta_off2, idepth2);
@@ -274,21 +188,10 @@ void solveIsoTrackV2() {
   }
 
   // Now we have a (M x M) linear system: A * X = b
-  // Solve it:
-  TDecompLU solver(A);
-  bool ok = solver.Solve(b);
-  if (!ok) {
-    cout << "Solve failed!" << endl;
-  }
-  
-  // The solution is in b now:
-  double corr[nc];
-  for (int ic=0; ic<nc; ic++) {
-    corr[ic] = b[ic]; 
-  }
-
+  // The solution is in b[nc] now
   // The lambda_i are in b[nc + ieta], if needed.
 
+  
   ////////////////////////////////////////////////////////////
   // Solution failed because not all depths are at all ieta //
   // We need to compress them out first                     //
@@ -349,12 +252,14 @@ void solveIsoTrackV2() {
   // fullX now contains the solution for the previously non-empty rows.
   // The empty-row variables remain zero.
 
+  
   /////////////////////////////////////
   // Save results for later plotting //
   /////////////////////////////////////
   
   TFile *fout = new TFile("solveIsoTrackV2.root","RECREATE");
   assert(fout && !fout->IsZombie());
+  fout->cd();
   int color[ndepth] = {kBlue, kOrange+1, kGreen+1, kRed,
 		       kYellow+1, kOrange-7, kGray+2};
   for (int depth = 0; depth != ndepth; ++depth) {
@@ -362,55 +267,105 @@ void solveIsoTrackV2() {
 		       61,-30.5,30.5);
     h->SetMarkerColor(color[depth]);
     h->SetLineColor(color[depth]);
-    for (int i = 0; i != M; ++i) {
+    //for (int i = 0; i != M; ++i) {
+    for (int i = 0; i != nc; ++i) {
       // int i = ieta*ndepth+depth
       if (i%ndepth!=depth) continue;
       int ieta = i/ndepth; // 0-57
-      ieta -= 29; // -29-28
-      if (ieta>=0) ieta += 1; // -29 to +29 with 0 excluded
+      int jeta = ieta - 29; // -29-28
+      if (jeta>=0) jeta += 1; // -29 to +29 with 0 excluded
       double val = fullX[i];
-      int j = h->FindBin(ieta);
+      int j = h->FindBin(jeta);
       h->SetBinContent(j, val);
+
+      // Let's make this simple: corr uncertainty is dominated by
+      // the relative uncertainty in core ieta at same depth
+      // scaled up by fraction of energy in that ieta,depth over total energy
+      // => not quite working for depth 6, 4, maybe 1
+      //double ecore = esum[ieta][0][1][depth];
+      //double err = esume[ieta][0][1][depth];
+      // => try using full 3x5 for estimate of the depth
+      // => better, although still large for depth 7 and maybe small for 2,3
+      double ecore = (esum[ieta][0][0][depth] + esum[ieta][0][1][depth] + esum[ieta][0][2][depth]);
+      double err = sqrt(pow(esume[ieta][0][0][depth],2) + pow(esume[ieta][0][1][depth],2) + pow(esume[ieta][0][2][depth],2));
+      // Make error bit larger for depth2,3
+      if (depth==1 || depth==2) {
+	ecore = esum[ieta][0][1][depth];
+	err = esume[ieta][0][1][depth];
+      }
+      if (ecore!=0 && err>0 && val>0)
+	h->SetBinError(j, val * (err / ecore) * ((1./val) / ecore));
     }
   }
   fout->Write();
   fout->Close();
 
   
+  /////////////////////////////////////
+  // Figure out the uncertainties    //
+  /////////////////////////////////////
   /*
-  // Regions for (core,side)x(delta_ieta=-1,0,+1)x(depth)
-  for (int i = 0; i != nband; ++i) { // (core,side)
-    for (int j = 0; j != nwidth; ++j) {
-      for (int k = 0; k != ndepth; ++k) {
-	esum[i][j][k] = 0;
-      }
-    } // for j
-  } // for i
+  // Re-access the reduced matrix Ared and vector bred
+  const int Mred = Ared.GetNrows();
   
-  // p(i) = Sum_d,di c_ieta,depth (Ecore_ieta,depth - k*Eside_ieta,depth)
+  // Compute the inverse of the reduced matrix
+  TMatrixD AredInv = Ared;
+  AredInv.Invert();
   
-  // Take out empty bins and figure out mappings
-  int bin(0);
-  map<int, int> mp2toM, mMtop2;
-  for (int i = 1; i != p2->GetNbinsX()+1; ++i) {
-    for (int j = 1; j != p2->GetNbinsY()+1; ++i) {
-      if (p2->GetBinContent(i,j)!=0 && p2->GetBinError(i,j)!=0) {
-	int k = p2->GetBin(i,j);
-	mp2toM[k] = bin;
-	mMtop2[bin] = k;
-	++bin;
+  // Initialize covariance matrix for b (based on input errors)
+  TMatrixD Cov_b(Mred, Mred);
+  Cov_b.Zero();
+  for (int i = 0; i < Mred; ++i) {
+    for (int j = 0; j < Mred; ++j) {
+      double sumEprod = 0.0;
+      for (int k = 0; k < nch; ++k) {
+	for (int l = 0; l < nch; ++l) {
+	  sumEprod += eprode[i][k][l] * Ared(i, k) * Ared(j, l);
+	}
       }
-    } // for j
-  } // for i
-  const int N_tot = bin;
-
-  cout << "Found "<<N_tot<<" non-empty elements\n";
-
-  TVectorD E_eff_total(N_tot);
-  TMatrixD V_total(N_tot, N_tot);
-
-  for (int i = 0; i != N_tot; ++i) {
-    E_eff_total
+      double sumEsume = 0.0;
+      for (int k = 0; k < nch; ++k) {
+	sumEsume += esume[i][k] * Ared(i, k);
+      }
+      Cov_b(i, j) = sumEprod + sumEsume;
+    }
+  }
+  
+  // Propagate uncertainties: Cov_X = AredInv * Cov_b * (AredInv)^T
+  TMatrixD Cov_X = AredInv * Cov_b * AredInv.T();
+  
+  // Extract uncertainties: Delta_X = sqrt(diag(Cov_X))
+  TVectorD Delta_X(Mred);
+  for (int i = 0; i < Mred; ++i) {
+    Delta_X[i] = std::sqrt(Cov_X(i, i));
+  }
+  
+  // Map uncertainties back to full space
+  TVectorD fullDeltaX(M);
+  fullDeltaX.Zero();
+  for (int irow = 0; irow < Mred; ++irow) {
+    fullDeltaX[newToOld[irow]] = Delta_X[irow];
+  }
+  
+    // Save uncertainties in histograms
+  TFile *fout = new TFile("solveIsoTrackV2_withUncertainties.root", "RECREATE");
+  for (int depth = 0; depth != ndepth; ++depth) {
+    TH1D *h = new TH1D(Form("hf_dd_unc_%d", depth + 1), ";ieta;Uncertainty",
+		       61, -30.5, 30.5);
+    for (int i = 0; i != M; ++i) {
+      if (i % ndepth != depth) continue;
+      int ieta = i / ndepth;
+      ieta -= 29; // Adjust ieta range
+      if (ieta >= 0) ieta += 1;
+      double unc = fullDeltaX[i];
+      int j = h->FindBin(ieta);
+      h->SetBinContent(j, unc);
+    }
+    h->Write();
   }
   */  
+  //fout->Write();
+  //fout->Close();
+  
 } // solveIsoTrackV2
+
