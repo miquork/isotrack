@@ -87,8 +87,8 @@ int delta_iphiV2(int iphi1, int iphi2) {
 // Estimate effective area based on half granularity on iphi after |ieta|>=21
 double areaScale3x5V2(int ieta, int iphi) {
 
-  double areaScale1  = 5./(9.-5.); // = 1.25, |ieta|<=19
-  double areaScale2  = 3./(5.-3.); // = 1.50, |ieta|>=22
+  //double areaScale1  = 5./(9.-5.); // = 1.25, |ieta|<=19
+  //double areaScale2  = 3./(5.-3.); // = 1.50, |ieta|>=22
   //double areaScale3o = 3./(5.-3.); // = 1.50, |ieta|==20, odd iphi
   //double areaScale3e = 2./(4.-2.); // = 1.00, |ieta|==20, even iphi
   //if (abs(ieta)<=19) return areaScale1;
