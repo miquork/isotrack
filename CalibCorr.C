@@ -246,12 +246,18 @@ int truncateDepth(int ieta, int depth, int truncateFlag) {
 }
 
 double threshold(int subdet, int depth, int form) {
-  double cutHE[7] = {0.1, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2};
-  double cutHB[3][4] = {{0.1, 0.2, 0.3, 0.3}, {0.25, 0.25, 0.3, 0.3}, {0.4, 0.3, 0.3, 0.3}};
+  double cutHE[4][7] = {{0.1, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2},  // 2022
+			{0.1, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2},  // 2023
+			{0.1, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2},  // 2024
+			{0.2, 0.5, 0.5, 0.3, 0.3, 0.3, 0.3}}; // 2025
+  double cutHB[4][4] = {{0.1,  0.2,  0.3, 0.3},  // 2022
+			{0.25, 0.25, 0.3, 0.3},  // 2023
+			{0.4,  0.3,  0.3, 0.3},  // 2024
+			{0.6,  0.5,  0.5, 0.6}}; // 2025
   double thr(0);
   if (form > 0) {
     if (subdet == 2)
-      thr = cutHE[depth - 1];
+      thr = cutHE[form-1][depth - 1];
     else
       thr = cutHB[form - 1][depth - 1];
   }

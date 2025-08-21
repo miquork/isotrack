@@ -5,6 +5,7 @@
 #include <TCanvas.h>
 #include <TStopwatch.h>
 #include <TDatime.h>
+#include <TMath.h>
 
 #include <TProfile2D.h>
 #include <TProfile3D.h>
@@ -12,6 +13,7 @@
 #include <TH3D.h>
 
 #include <set>
+#include <map>
 #include <iostream>
 
 // Introduce _gainCorrectionRetriever global pointer
@@ -89,7 +91,7 @@ double areaScale3x5(int ieta, int iphi) {
 
 // Override new developments
 bool useClassic = false;//true;
-bool useSunanda = true;
+bool useSunanda = false;//true;
 
 // Apply gain corrections from Yildiray
 bool correctGains = false;//true; // v31 off
@@ -117,7 +119,7 @@ bool doSingleDepth = true;
 // Limited size regions to include containment
 bool enforce5x5 = false;
 bool enforce3x3 = false;
-bool enforce3x5 = false;//true;
+bool enforce3x5 = true;//false;//true;
 
 // Propagate updated single depths (gains and/or size) to classic single depth
 bool updateSingleDepth = true;
@@ -225,6 +227,20 @@ void IsoTrack::Loop()
      fChain->SetBranchStatus("t_Run",1);
    }
 
+   // Study AlCaRaw trigger bias: L1 pT and duplicate events
+   if (true) {
+     fChain->SetBranchStatus("t_nVtx");
+     fChain->SetBranchStatus("t_nTrk");
+     fChain->SetBranchStatus("t_goodPV");
+     fChain->SetBranchStatus("t_rhoh");
+     
+     fChain->SetBranchStatus("t_l1pt");
+     fChain->SetBranchStatus("t_phi");
+     fChain->SetBranchStatus("t_pt");
+     fChain->SetBranchStatus("t_Run",1);
+     fChain->SetBranchStatus("t_Event",1);
+   }
+
    // Load gain corrections and activate _gainCorrectionRetriever global pointer
    //gainCorrections();
 
@@ -260,6 +276,27 @@ void IsoTrack::Loop()
    cout << "Starting loop over "<<nentries<<" events\n";
    TFile *fout = new TFile("IsoTrack.root","RECREATE");
 
+   // AlCaRaw studies
+   TH2D *h2nvtx, *h2ntrk, *h2goodpv, *h2rhoh, *h2phi;
+   h2nvtx = new TH2D("h2nvtx",";ieta;t_nVtx", 61,-30.5,30.5, 200,0,200);
+   h2ntrk = new TH2D("h2ntrk",";ieta;t_nTrk", 61,-30.5,30.5, 2000,0,2000);
+   h2goodpv = new TH2D("h2goodpv",";ieta;t_goodPV", 61,-30.5,30.5, 200,0,200);
+   h2rhoh = new TH2D("h2rhoh",";ieta;t_rhoh", 61,-30.5,30.5, 500,0,50);
+   h2phi = new TH2D("h2phi",";ieta;t_phi", 61,-30.5,30.5, 72, 0, TMath::TwoPi());
+   
+   TH2D *h2p, *h2pt, *h2l1pt, *h2ehcal, *h2ehcal10, *h2ehcal30;
+   h2p = new TH2D("h2p",";ieta;t_p", 61,-30.5,30.5, 400,0,100);
+   h2pt = new TH2D("h2pt",";ieta;t_pt", 61,-30.5,30.5, 400,0,100);
+   h2l1pt = new TH2D("h2l1pt",";ieta;t_l1pt", 61,-30.5,30.5, 400,0,200);
+   h2ehcal = new TH2D("h2ehcal",";ieta;eHcal", 61,-30.5,30.5, 400,0,200);
+   h2ehcal10 = new TH2D("h2ehcal10",";ieta;eHcal10", 61,-30.5,30.5, 400,0,200);
+   h2ehcal30 = new TH2D("h2ehcal30",";ieta;eHcal30", 61,-30.5,30.5, 400,0,200);
+
+   map<Int_t, map<Int_t, Bool_t> > mdup;
+   TH1D *h1dup, *h1all;
+   h1dup = new TH1D("h1dup",";ieta;", 61,-30.5,30.5);
+   h1all = new TH1D("h1all",";ieta;", 61,-30.5,30.5);
+   
    // Depth-independent results
    TH2D *h2raw, *h2pu1, *h2pu3, *h2mip, *h2c;
    h2raw = new TH2D("h2raw",";ieta;t_eHcal/(t_p-eMIP)", 61,-30.5,30.5, 400,0,4);
@@ -442,7 +479,7 @@ void IsoTrack::Loop()
 	  unsigned int id = (*t_DetIds)[idet];
 	  double edet = (*t_HitEnergies)[idet];
 	  //if (correctGains) edet *= _gainCorrectionRetriever->getCorrection(t_Run, ieta, depth);
-	  if (correctCuts)  edet *= (edet>threshold(id, 3) ? 1 : 0);
+	  if (correctCuts)  edet *= (edet>threshold(id, 4) ? 1 : 0);
 	  if (correctGains) edet *= cDuplicate_->getCorr(t_Run, ieta, depth);
 	  if (correctPhis)  edet *= cFactor_->getCorr(t_Run, id);
 	  if (correctHCAL)  edet *= getIsoTrackCorr(t_Run, ieta, depth);
@@ -510,7 +547,7 @@ void IsoTrack::Loop()
 	  unsigned int id = (*t_DetIds1)[idet];
 	  double edet = (*t_HitEnergies1)[idet];
 	  //if (correctGains) edet *= _gainCorrectionRetriever->getCorrection(t_Run, ieta, depth);
-	  if (correctCuts)  edet *= (edet>threshold(id, 3) ? 1 : 0);
+	  if (correctCuts)  edet *= (edet>threshold(id, 4) ? 1 : 0);
 	  if (correctGains) edet *= cDuplicate_->getCorr(t_Run, ieta, depth);
 	  if (correctPhis)  edet *= cFactor_->getCorr(t_Run, id);
 	  if (correctHCAL)  edet *= getIsoTrackCorr(t_Run, ieta, depth);
@@ -551,7 +588,7 @@ void IsoTrack::Loop()
 	  unsigned int id = (*t_DetIds3)[idet];
 	  double edet = (*t_HitEnergies3)[idet];
 	  //if (correctGains) edet *= _gainCorrectionRetriever->getCorrection(t_Run, ieta, depth);
-	  if (correctCuts)  edet *= (edet>threshold(id, 3) ? 1 : 0);
+	  if (correctCuts)  edet *= (edet>threshold(id, 4) ? 1 : 0);
 	  if (correctGains) edet *= cDuplicate_->getCorr(t_Run, ieta, depth);
 	  if (correctPhis)  edet *= cFactor_->getCorr(t_Run, id);
 	  if (correctHCAL)  edet *= getIsoTrackCorr(t_Run, ieta, depth);
@@ -775,7 +812,28 @@ void IsoTrack::Loop()
 	  epu = k * ediff;
 	  rc = (esum - epu) / (t_p - t_eMipDR);
 	}
-	
+
+	bool isDuplicate(false);
+	if (mdup[t_Run][t_Event]==1) isDuplicate = true;
+	mdup[t_Run][t_Event] = 1;
+
+	h2nvtx->Fill(t_ieta, t_nVtx);
+	h2ntrk->Fill(t_ieta, t_nTrk);
+	h2goodpv->Fill(t_ieta, t_goodPV);
+	h2rhoh->Fill(t_ieta, t_rhoh);
+	h2phi->Fill(t_ieta, t_phi);
+      
+	h2p->Fill(t_ieta, t_p);
+	h2pt->Fill(t_ieta, t_pt);
+	h2l1pt->Fill(t_ieta, t_l1pt);
+	if (!isDuplicate) {
+	  h2ehcal->Fill(t_ieta, t_eHcal*t_pt/t_p);
+	  h2ehcal10->Fill(t_ieta, t_eHcal10*t_pt/t_p);
+	  h2ehcal30->Fill(t_ieta, t_eHcal30*t_pt/t_p);
+	}
+	if (isDuplicate) h1dup->Fill(t_ieta);
+	h1all->Fill(t_ieta);
+
 	h2raw->Fill(t_ieta, t_eHcal / (t_p - t_eMipDR));
 	h2pu1->Fill(t_ieta, epu / (t_p - t_eMipDR));
 	h2pu3->Fill(t_ieta, epu3 / (t_p - t_eMipDR));
