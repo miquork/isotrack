@@ -90,9 +90,12 @@ void drawIsoTracks(string mode, string era, string version) {
   cout << "Calculating depth-dependent corrections" << endl << flush;
     
   const int ndepth = 10;
+  //int color[ndepth] =
+  //{kBlack, kRed, kGreen+2, kBlue, kMagenta+1,
+  // kOrange+1,kCyan+2,kGray+2, 1,1};
   int color[ndepth] =
-    {kBlack, kRed, kGreen+2, kBlue, kMagenta+1,
-     kOrange+1,kCyan+2,kGray+2, 1,1};
+    {kBlack, kBlue, kOrange+1, kGreen+1, kRed,
+     kYellow+1,kOrange+3,kGray+2, 1,1};
   int marker[ndepth] =
     {1, kOpenTriangleDown, kOpenSquare, kOpenCircle, kOpenTriangleUp,
      kOpenStar,kOpenDiamond,kOpenCross, 1,1};
@@ -234,19 +237,18 @@ void drawIsoTracks(string mode, string era, string version) {
       // Set vector length to active depths and exclude ECAL
       int ndepth2 = 4; //
       int jeta = p2->GetXaxis()->GetBinCenter(ieta);
+      /*
       // Depths for original case (and Sunanda) with wide cone
-
       if (fabs(jeta)==15) ndepth2 = 5;
       if (fabs(jeta)>=16) ndepth2 = 6;
       if (fabs(jeta)>=23) ndepth2 = 7;
-
+      */
       // Depths for new 3x5
-      /*
       if (fabs(jeta)==17) ndepth2 = 5;
       if (fabs(jeta)>=18) ndepth2 = 6;
-      if (fabs(jeta)>=18) ndepth2 = 6;
+      //if (fabs(jeta)>=18) ndepth2 = 6; // just duplicate line?
       if (fabs(jeta)>=25) ndepth2 = 7;
-      */
+
       TVectorD vec_c(ndepth2);
       TVectorD vec_err(ndepth2);
       TVectorD vec_mu(ndepth2);
