@@ -6,7 +6,14 @@
 
 #include <iostream>
 
-void drawCorrFact(string mode = "", string era="24F", string version="vX") {
+bool drawDI = true; // set to false by drawSunanda
+bool drawSunanda = true; // Sunanda's color scheme and range
+
+// drawDF: draw hf_dd_* that don't have HCAL response undone
+//         (either closure, or 
+void drawCorrFact(string mode = "", string era="24F", string version="vX",
+		  bool drawV2 = false, bool drawDF = true,
+		  string filename = "") {
 
   cout << "Running drawCorFact(\""<<mode<<",\""<<era
        << ",\""<<version<<"\")..."<<endl<<flush;
@@ -17,23 +24,40 @@ void drawCorrFact(string mode = "", string era="24F", string version="vX") {
   const char *cm = mode.c_str();
   const char *ce = era.c_str();
   const char *cv = version.c_str();
-  TFile *f = new TFile(Form("rootfiles/CorrFact%s_%s_%s.root",cm,cv,ce),
-		       "READ");
+  TFile *f(0);
+  bool isSunanda(false);
+  if (filename!="") {
+    f = new TFile(filename.c_str(),"READ");
+    isSunanda =  (TString(filename.c_str()).Contains("Sunanda"));
+  }
+  else if (drawV2)
+    f = new TFile(Form("rootfiles/solveIsoTrackV2_%s_%s.root",cv,ce),
+		  "READ");
+  else
+    f = new TFile(Form("rootfiles/CorrFact%s_%s_%s.root",cm,cv,ce),
+		  "READ");
   assert(f && !f->IsZombie());
-  TFile *fe = new TFile(Form("rootfiles/CorrFact_even%s_%s_%s.root",cm,cv,ce),
-			"READ");
+  TFile *fe(0);
+  if (!drawV2)
+    fe = new TFile(Form("rootfiles/CorrFact_even%s_%s_%s.root",cm,cv,ce),
+		   "READ");
   //TFile *fe = new TFile("CorrFact_even.root","READ");
   //TFile *fe = new TFile("CorrFact_even_wide.root","READ");
-  assert(fe && !fe->IsZombie());
-  TFile *fo = new TFile(Form("rootfiles/CorrFact_odd%s_%s_%s.root",cm,cv,ce),
-			"READ");
+  //assert(fe && !fe->IsZombie());
+  TFile *fo(0);
+  if (!drawV2)
+    fo = new TFile(Form("rootfiles/CorrFact_odd%s_%s_%s.root",cm,cv,ce),
+		   "READ");
   //TFile *fo = new TFile("CorrFact_odd.root","READ");
   //TFile *fo = new TFile("CorrFact_odd_wide.root","READ");
-  assert(fo && !fo->IsZombie());
+  //assert(fo && !fo->IsZombie());
 
-  cout << "Input files " << fe->GetName() << " and "
-       << fo->GetName() << endl << flush;
-
+  if (fe && fo)
+    cout << "Input files " << fe->GetName() << " and "
+	 << fo->GetName() << endl << flush;
+  else
+    cout << "Not using (not found) even/odd files" << endl << flush;
+  
   // Sunanda's refered
   //TFile *fs = new TFile("../IsoTrackSunanda/uncX/MFitC.root","READ");
   //TFile *fs = new TFile("../IsoTrackSunanda/uncX/MFitF.root","READ");
@@ -44,9 +68,22 @@ void drawCorrFact(string mode = "", string era="24F", string version="vX") {
   curdir->cd();
 
   double eps = 1e-4;
-  TH1D *h_0 = tdrHist(Form("h_0dcf%s",cm),"Correction Factor",0.15+eps,2.7-eps,
+  double y1(0.15), y2(2.7);
+  //if (isSunanda) { y1 = 0.4; y2 = 2.5; }
+  //if (isSunanda) { y1 = 0.; y2 = 2.0; }
+  TH1D *h_0 = tdrHist(Form("h_0dcf%s",cm),"Correction Factor",y1+eps,y2-eps,
 		      "i#eta",-29,29);
   lumi_136TeV = Form("20%s EGamma",ce);
+
+  // Better labelling for 2025 AlCaRaw and EGamma plots
+  TString t2(ce);
+  if (t2.Contains("AR2")) {
+    t2.ReplaceAll("AR2","2"); lumi_136TeV = Form("20%s AlCaRaw",t2.Data());
+  }
+  if (t2.Contains("EG2")) {
+    t2.ReplaceAll("EG2","2"); lumi_136TeV = Form("20%s EGamma",t2.Data());
+  }
+  
   extraText = "Private";
   TCanvas *c0 = tdrCanvas(Form("c0_dcf%s",cm),h_0,8,11,kRectangular);
 
@@ -56,45 +93,72 @@ void drawCorrFact(string mode = "", string era="24F", string version="vX") {
   l->DrawLine(-29,1,29,1);
   l->SetLineStyle(kDotted);
   l->SetLineColor(kGray+1);
-  double y1 = h_0->GetMinimum();
-  double y2 = h_0->GetMaximum();
+  //double y1 = h_0->GetMinimum();
+  //double y2 = h_0->GetMaximum();
   l->DrawLine(-15.5,y1,-15.5,y2);
   l->DrawLine(+15.5,y1,+15.5,y2);
   l->SetLineColor(kGray+1);
   l->DrawLine(-17.5,y1,-17.5,y2);
   l->DrawLine(+17.5,y1,+17.5,y2);
 
+  if (isSunanda) {
+    l->SetLineStyle(kSolid);
+    l->DrawLine(-27.5,y1,-27.5,y2);
+    l->DrawLine(+27.5,y1,+27.5,y2);
+  }
+    
   TLatex *tex = new TLatex();
   tex->SetNDC(); tex->SetTextSize(0.045);
 
   TLegend *leg0 = tdrLeg(0.40,0.90-5*0.05,0.65,0.90);
   TLegend *leg02 = tdrLeg(0.40,0.15,0.65,0.15+3*0.05);
 
-  TH1D *h0 = (TH1D*)f->Get(Form("h_di%s",cm)); assert(h0);
+  TH1D *h0 = (TH1D*)f->Get(Form("h_di%s",cm)); //assert(h0);
 
   const int ndepth = 10;
-  int color[ndepth] =
-    {kBlack, kRed, kGreen+2, kBlue, kMagenta+1,
-     kOrange+1,kCyan+2,kGray+2, 1,1};
+  //int color[ndepth] =
+  //{kBlack, kRed, kGreen+2, kBlue, kMagenta+1,
+  // kOrange+1,kCyan+2,kGray+2, 1,1};
+    int color[ndepth] =
+    {kBlack, kBlue, kOrange+1, kGreen+1, kRed,
+     kYellow+1,kOrange+3,kGray+2, 1,1};
   int marker[ndepth] =
     {1, kOpenTriangleDown, kOpenSquare, kOpenCircle, kOpenTriangleUp,
      kOpenStar,kOpenDiamond,kOpenCross, 1,1};
+
+  if (drawSunanda) {
+    drawDI = false;
+    color[1] = kBlack;   marker[1] = kFullCircle;
+    color[2] = kMagenta; marker[2] = kFullSquare;
+    color[3] = kBlue;    marker[3] = kFullTriangleUp;
+    color[4] = kCyan;    marker[4] = kFullTriangleDown;
+    color[5] = kRed;     marker[5] = kOpenCircle;
+    color[6] = kBlue-7;  marker[6] = kOpenSquare;
+    color[7] = kGreen;   marker[7] = kOpenTriangleUp;
+    leg0->SetY1(0.90-4*0.05);
+    h_0->GetYaxis()->SetRangeUser(0,2.5);
+  }
   
-  leg0->AddEntry(h0,"Depth independent","PLE");
+  if (h0 && drawDI) leg0->AddEntry(h0,"Depth independent","PLE");
   for (int i = 1; i != 8; ++i) {
-    TH1D *hd = (TH1D*)f->Get(Form("hf_dd_%d",i)); assert(hd);
+    TH1D *hd(0);
+    if (drawDF) { hd = (TH1D*)f->Get(Form("hf_dd_%d",i)); assert(hd); }
+    else { hd = (TH1D*)f->Get(Form("h_dd_%d",i)); assert(hd); }
     tdrDraw(hd,"Pz",marker[i],color[i], kSolid,-1,kNone,0, 0.8);
     if (i<5) leg0->AddEntry(hd,Form("DD depth %d",i),"PLE");
     else     leg02->AddEntry(hd,Form("DD depth %d (HE)",i),"PLE");
   }
-  tdrDraw(h0,"Pz",kFullCircle,kBlack, kSolid,-1,kNone,0, 0.8);
+  if (h0 && drawDI) tdrDraw(h0,"Pz",kFullCircle,kBlack, kSolid,-1,kNone,0, 0.8);
 
   c0->SaveAs(Form("pdf/IsoTrack_CorrFactV2%s_%s_%s.pdf",cm,cv,ce));
-  
+
+
+  // Even/odd for old method only, for now
+  if (!fe || !fo) return;
 
   TH1D *h_1 = tdrHist(Form("h_1dcf%s",cm),"CF_{odd} / CF_{even}",0.8,1.2,
 		      "i#eta",-29,29);
-  lumi_136TeV = Form("20%s EGamma",ce);;
+  lumi_136TeV = Form("20%s EGamma",ce);
   extraText = "Private";
   TCanvas *c1 = tdrCanvas(Form("c1_dcf%s",cm),h_1,8,11,kRectangular);
 
@@ -161,14 +225,18 @@ void drawCorrFact(string mode = "", string era="24F", string version="vX") {
   
   // Get even+odd, do ratio, plot
   for (int i = 1; i != 8; ++i) {
-    /*
-    TH1D *he = (TH1D*)fe->Get(Form("h_dd_%d",i)); assert(he);
-    TH1D *ho = (TH1D*)fo->Get(Form("h_dd_%d",i)); assert(ho);
-    TH1 *hr = (TH1D*)ho->Clone(Form("hr_dd_%d",i));
-    */
-    TH1D *he = (TH1D*)fe->Get(Form("hf_dd_%d",i)); assert(he);
-    TH1D *ho = (TH1D*)fo->Get(Form("hf_dd_%d",i)); assert(ho);
-    TH1 *hr = (TH1D*)ho->Clone(Form("hfr_dd_%d%s",i,cm));
+
+    TH1D *he(0), *ho(0), *hr(0);
+    if (drawDF) {
+      he = (TH1D*)fe->Get(Form("hf_dd_%d",i)); assert(he);
+      ho = (TH1D*)fo->Get(Form("hf_dd_%d",i)); assert(ho);
+      hr = (TH1D*)ho->Clone(Form("hfr_dd_%d%s",i,cm));
+    }
+    else { 
+      he = (TH1D*)fe->Get(Form("h_dd_%d",i)); assert(he);
+      ho = (TH1D*)fo->Get(Form("h_dd_%d",i)); assert(ho);
+      hr = (TH1D*)ho->Clone(Form("hr_dd_%d",i));
+    }
     hr->Divide(he);
 
     tdrDraw(hr,"Pz",marker[i],color[i], kSolid,-1,kNone,0, 0.8);
