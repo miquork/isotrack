@@ -22,8 +22,11 @@ void decodeChannel(const int channel, int &iband, int &iwidth, int &idepth) {
   idepth = rest%ndepth;
 }
 
-void solveIsoTrackV2() {
+void solveIsoTrackV2(string era="24", string version="vX") {
 
+  const char *ce = era.c_str();
+  const char *cv = version.c_str();
+  
   TFile *f = new TFile("IsoTrackV2.root","READ");
   assert(f && !f->IsZombie());
 
@@ -257,7 +260,8 @@ void solveIsoTrackV2() {
   // Save results for later plotting //
   /////////////////////////////////////
   
-  TFile *fout = new TFile("solveIsoTrackV2.root","RECREATE");
+  TFile *fout = new TFile(Form("rootfiles/solveIsoTrackV2_%s_%s.root",cv,ce),
+			  "RECREATE");
   assert(fout && !fout->IsZombie());
   fout->cd();
   int color[ndepth] = {kBlue, kOrange+1, kGreen+1, kRed,
