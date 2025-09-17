@@ -15,6 +15,22 @@
 
 #include <iostream>
 
+bool isValidEta(int ieta, int depth) {
+  int absi = abs(ieta);
+  if (depth==0 && absi<=29) return true;
+  if (depth==1 && (absi<=16 || (absi>=19 && absi<=29))) return true;
+  if (depth==2 && absi<=29) return true;
+  if (depth==3 && absi<=29) return true;
+  if (depth==4 && (absi<=16 || (absi>=18 && absi<=28))) return true;
+  if (depth==5 && (absi>=18 && absi<=28)) return true;
+  if (depth==6 && (absi>=19 && absi<=28)) return true;
+  if (depth==7 && (absi>=26 && absi<=28)) return true;
+  if (depth==8 && (absi<=15)) return true;
+  if (depth==9 && (absi>=29)) return true;
+  if (depth==10 && (absi>=29)) return true;
+  return false;
+}
+
 void drawIsoTracks(string mode, string era, string version);
 
 void drawIsoTrack(string era="24F", string version="vX", bool doEvenOdd=true) {
@@ -380,6 +396,53 @@ void drawIsoTracks(string mode, string era, string version) {
   }
   fout->Close();
 
+  // Store results also in jecsys3/minitools/HcalDepthsFromIsoTrack.C style
+  if (true) {
+    
+    TFile *fout2 = new TFile(Form("rootfiles/HcalDepthsFromIsoTrackOrig_%s_%s.root",cv,ce),
+			     "RECREATE");
+    cout << "Storing results to " << fout2->GetName() << endl << flush;
+    
+    int ietas[] = { // ieta
+      -41, -40, -39, -38, -37, -36, -35, -34, -33, -32, -31, -30, -29, -28, -27, -26, -25, -24, -23, -22, -21, -20, -19, -18, -17, -16, -15, -14, -13, -12, -11, -10, -9, -8, -7, -6, -5, -4, -3, -2, -1, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41
+    };
+    const int n_ieta = sizeof(ietas)/sizeof(ietas[0]);
+    assert(n_eta==n_ieta);
+    double vieta[n_ieta+1];
+    //for (int i = 0; i != n_ieta+2; ++i) { vieta[i] = ietas[i]; }
+    for (int i = 0; i != n_ieta/2; ++i) { vieta[i] = ietas[i]-0.5; }
+    vieta[n_ieta/2] = 0.;
+    for (int i = n_ieta/2; i != n_ieta+1; ++i) { vieta[i+1] = ietas[i]+0.5; }
+
+    // Depths (0=ECAL, 1-7=HCAL, 8=HO, 9=hfLong, 10=hfShort)
+    int num_depths = 9;
+    std::string depth_str[11] = {"0", "1", "2", "3", "4", "5", "6", "7", "8"};// "hfLong", "hfShort"};
+    const char* label[11] = {"ECAL","Depth 1","Depth 2","Depth 3","Depth 4","5 (HE)","6 (HE)","7 (HE)","HO","HF Long","HF Short"};
+    int colors[11] = {kCyan+1, kBlue, kOrange+1, kGreen+1, kRed, kYellow+1, kOrange+3, kGray+2, kGray+1, kBlue, kRed};
+    int markers[11] = {20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30};
+    
+    for (int d = 0; d != num_depths; ++d) {
+      
+      TH1D *h = vhdf[d];
+      TH1D *hnew = new TH1D(Form("h_depth_%d",d),Form(";Track i#eta;Correction factor (%s)",label[d]),n_ieta,vieta);
+      for (int i = 1; i != hnew->GetNbinsX()+1; ++i) {
+	double ieta = hnew->GetBinCenter(i);
+	int j = h->GetXaxis()->FindBin(ieta);
+	if (j>=1 && j<=h->GetNbinsX() && isValidEta(ieta,d)) {
+	  
+	  hnew->SetBinContent(i, h->GetBinContent(j));
+	  hnew->SetBinError(i, h->GetBinError(j));
+	}
+      } // for i
+
+      hnew->SetLineColor(colors[d]);
+      hnew->SetMarkerColor(colors[d]);
+      hnew->SetMarkerStyle(markers[d]);
+      hnew->Write(Form("h_depth_%d",d));
+    }
+    fout2->Close();
+  }
+  
   cout << "File closed, finished drawIsoTracks(\""<<mode<<",\""
        <<era<<"\",\""<<version<<"\").\n"<<endl<<flush;
 } // drawIsoTracks(mode)
