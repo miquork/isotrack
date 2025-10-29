@@ -1,0 +1,4 @@
+/eos/cms/store/group/dpg_hcal/comm_hcal/Jyoti/13p6TeV/2025/EraC_PartI/EGamma0_UnCorr/EGamma0_UnCorr_40to60GeV.root
+/eos/cms/store/group/dpg_hcal/comm_hcal/Jyoti/13p6TeV/2025/EraC_PartI/EGamma1_UnCorr/EGamma1_UnCorr_40to60GeV.root
+/eos/cms/store/group/dpg_hcal/comm_hcal/Jyoti/13p6TeV/2025/EraC_PartI/EGamma2_UnCorr/EGamma2_UnCorr_40to60GeV.root
+/eos/cms/store/group/dpg_hcal/comm_hcal/Jyoti/13p6TeV/2025/EraC_PartI/EGamma3_UnCorr/EGamma3_UnCorr_40to60GeV.root
