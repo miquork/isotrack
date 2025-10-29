@@ -99,11 +99,11 @@ bool correctGains = false;//true; // v31 off
 // Apply phi asymmetry corrections
 bool correctPhis = false;//true; // v30 off
 
-// Apply correct thresholds to RecHits
-bool correctCuts = true; // v32 off
-
 // Apply IsoTrack HCAL correction (closure)
 bool correctHCAL = false;//true;
+
+// Apply correct thresholds to RecHits after updating scale
+bool correctCuts = true; // v32 off
 
 // Test t_detIds3/getWeight bug
 bool testWeightBug = false;//true;
@@ -166,8 +166,9 @@ void IsoTrack::Loop()
    if (correctGains || correctPhis || correctCuts || correctHCAL)    {
      if (correctGains) cout << "Correcting gain on the fly" << endl;
      if (correctPhis)  cout << "Correcting phi asymmetry on the fly" << endl;
-     if (correctCuts)  cout << "Correcting hit thresholds on the fly" << endl;
      if (correctHCAL)  cout << "Correcting HCAL on the fly" << endl;
+     if (correctCuts)  cout << "Correcting hit thresholds on the fly,"
+			    << " on the _newly corrected_ energy" << endl;
      if (doPerDepth && updateSingleDepth && doSingleDepth)
        cout << "  with single depths updated" << endl;
    }
@@ -479,11 +480,12 @@ void IsoTrack::Loop()
 	  unsigned int id = (*t_DetIds)[idet];
 	  double edet = (*t_HitEnergies)[idet];
 	  //if (correctGains) edet *= _gainCorrectionRetriever->getCorrection(t_Run, ieta, depth);
-	  if (correctCuts)  edet *= (edet>threshold(id, 4) ? 1 : 0);
 	  if (correctGains) edet *= cDuplicate_->getCorr(t_Run, ieta, depth);
 	  if (correctPhis)  edet *= cFactor_->getCorr(t_Run, id);
 	  if (correctHCAL)  edet *= getIsoTrackCorr(t_Run, ieta, depth);
-	  
+	  // Apply cut on _corrected_ energy
+	  if (correctCuts)  edet *= (edet>threshold(id, 4) ? 1 : 0);
+ 
 	  /*
 	  if (fabs(ieta-t_ieta)>3) { // looking into 5x5? sometimes off-center 
 	    cout << "jentry = " << jentry
@@ -547,10 +549,11 @@ void IsoTrack::Loop()
 	  unsigned int id = (*t_DetIds1)[idet];
 	  double edet = (*t_HitEnergies1)[idet];
 	  //if (correctGains) edet *= _gainCorrectionRetriever->getCorrection(t_Run, ieta, depth);
-	  if (correctCuts)  edet *= (edet>threshold(id, 4) ? 1 : 0);
 	  if (correctGains) edet *= cDuplicate_->getCorr(t_Run, ieta, depth);
 	  if (correctPhis)  edet *= cFactor_->getCorr(t_Run, id);
 	  if (correctHCAL)  edet *= getIsoTrackCorr(t_Run, ieta, depth);
+	  // Apply cut on _corrected_ energy
+	  if (correctCuts)  edet *= (edet>threshold(id, 4) ? 1 : 0);
 	  
 	  //int dieta = (ieta-t_ieta)*TMath::Sign(1,t_ieta);
 	  //if (ieta*t_ieta<0) dieta += TMath::Sign(1,t_ieta);
@@ -588,12 +591,13 @@ void IsoTrack::Loop()
 	  unsigned int id = (*t_DetIds3)[idet];
 	  double edet = (*t_HitEnergies3)[idet];
 	  //if (correctGains) edet *= _gainCorrectionRetriever->getCorrection(t_Run, ieta, depth);
-	  if (correctCuts)  edet *= (edet>threshold(id, 4) ? 1 : 0);
 	  if (correctGains) edet *= cDuplicate_->getCorr(t_Run, ieta, depth);
 	  if (correctPhis)  edet *= cFactor_->getCorr(t_Run, id);
 	  if (correctHCAL)  edet *= getIsoTrackCorr(t_Run, ieta, depth);
 	  if (testWeightBug) edet *= cDuplicate_->getWeight(id);
-	  
+	  // Apply cut on _corrected_ energy
+	  if (correctCuts)  edet *= (edet>threshold(id, 4) ? 1 : 0);
+
 	  /*
 	  if (fabs(ieta-t_ieta)>4) { // looking into 7x7?
 	    cout << "jentry = " << jentry
