@@ -270,6 +270,12 @@ void IsoTrack::Loop()
      }
      */
    }
+
+   CalibThreshold *cCut_(0);
+   if (correctCuts) {
+     cout << "Read HCalPFcuts from file textfiles/PFCuts2025.txt" << endl;
+     cCut_ = new CalibThreshold(5); // 5=2025 cuts
+   }
    
    Long64_t nentries = fChain->GetEntries();//fChain->GetEntriesFast();
 
@@ -280,14 +286,14 @@ void IsoTrack::Loop()
    // AlCaRaw studies
    TH2D *h2nvtx, *h2ntrk, *h2goodpv, *h2rhoh, *h2phi;
    h2nvtx = new TH2D("h2nvtx",";ieta;t_nVtx", 61,-30.5,30.5, 200,0,200);
-   h2ntrk = new TH2D("h2ntrk",";ieta;t_nTrk", 61,-30.5,30.5, 2000,0,2000);
+   h2ntrk = new TH2D("h2ntrk",";ieta;t_nTrk", 61,-30.5,30.5, 400,0,400);
    h2goodpv = new TH2D("h2goodpv",";ieta;t_goodPV", 61,-30.5,30.5, 200,0,200);
-   h2rhoh = new TH2D("h2rhoh",";ieta;t_rhoh", 61,-30.5,30.5, 500,0,50);
+   h2rhoh = new TH2D("h2rhoh",";ieta;t_rhoh", 61,-30.5,30.5, 400,0,100);
    h2phi = new TH2D("h2phi",";ieta;t_phi", 61,-30.5,30.5, 72, 0, TMath::TwoPi());
    
    TH2D *h2p, *h2pt, *h2l1pt, *h2ehcal, *h2ehcal10, *h2ehcal30;
-   h2p = new TH2D("h2p",";ieta;t_p", 61,-30.5,30.5, 400,0,100);
-   h2pt = new TH2D("h2pt",";ieta;t_pt", 61,-30.5,30.5, 400,0,100);
+   h2p = new TH2D("h2p",";ieta;t_p", 61,-30.5,30.5, 400,0,200);
+   h2pt = new TH2D("h2pt",";ieta;t_pt", 61,-30.5,30.5, 400,0,200);
    h2l1pt = new TH2D("h2l1pt",";ieta;t_l1pt", 61,-30.5,30.5, 400,0,200);
    h2ehcal = new TH2D("h2ehcal",";ieta;eHcal", 61,-30.5,30.5, 400,0,200);
    h2ehcal10 = new TH2D("h2ehcal10",";ieta;eHcal10", 61,-30.5,30.5, 400,0,200);
@@ -484,7 +490,8 @@ void IsoTrack::Loop()
 	  if (correctPhis)  edet *= cFactor_->getCorr(t_Run, id);
 	  if (correctHCAL)  edet *= getIsoTrackCorr(t_Run, ieta, depth);
 	  // Apply cut on _corrected_ energy
-	  if (correctCuts)  edet *= (edet>threshold(id, 4) ? 1 : 0);
+	  //if (correctCuts)  edet *= (edet>threshold(id, 4) ? 1 : 0);
+	  if (correctCuts)  edet *= (edet>cCut_->threshold(id) ? 1 : 0);
  
 	  /*
 	  if (fabs(ieta-t_ieta)>3) { // looking into 5x5? sometimes off-center 
@@ -553,7 +560,8 @@ void IsoTrack::Loop()
 	  if (correctPhis)  edet *= cFactor_->getCorr(t_Run, id);
 	  if (correctHCAL)  edet *= getIsoTrackCorr(t_Run, ieta, depth);
 	  // Apply cut on _corrected_ energy
-	  if (correctCuts)  edet *= (edet>threshold(id, 4) ? 1 : 0);
+	  //if (correctCuts)  edet *= (edet>threshold(id, 4) ? 1 : 0);
+	  if (correctCuts)  edet *= (edet>cCut_->threshold(id) ? 1 : 0);
 	  
 	  //int dieta = (ieta-t_ieta)*TMath::Sign(1,t_ieta);
 	  //if (ieta*t_ieta<0) dieta += TMath::Sign(1,t_ieta);
@@ -596,8 +604,9 @@ void IsoTrack::Loop()
 	  if (correctHCAL)  edet *= getIsoTrackCorr(t_Run, ieta, depth);
 	  if (testWeightBug) edet *= cDuplicate_->getWeight(id);
 	  // Apply cut on _corrected_ energy
-	  if (correctCuts)  edet *= (edet>threshold(id, 4) ? 1 : 0);
-
+	  //if (correctCuts)  edet *= (edet>threshold(id, 4) ? 1 : 0);
+	  if (correctCuts)  edet *= (edet>cCut_->threshold(id) ? 1 : 0);
+	  
 	  /*
 	  if (fabs(ieta-t_ieta)>4) { // looking into 7x7?
 	    cout << "jentry = " << jentry

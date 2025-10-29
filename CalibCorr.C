@@ -24,6 +24,12 @@
 //      Prepares a Tchain by chaining several ROOT files specified
 // std::vector<std::string> splitString (fLine)
 //      Splits a string into several items which are separated by blank in i/p
+// CalibThreshold(form)
+//      A class which prvides threshold for HCAL RecHts to conform with PFCuts
+//        double threshold(unsigned int detId): proides the threshold
+//        form: 1-4 some depth dependnt cutoffs
+//              5-6 reads cutoffs from files "PFCuts2025.txt" (2025 defaults)
+//                  and "PFCuts362975.txt" (2023-2024 vakues)
 // CalibCorrFactor(infile, useScale, scale, etamax, debug)
 //      A class which reads a file with correction factors and provides
 //        bool   doCorr() : flag saying if correction is available
@@ -245,15 +251,33 @@ int truncateDepth(int ieta, int depth, int truncateFlag) {
   return d;
 }
 
-double threshold(int subdet, int depth, int form) {
+// Wrong 2025 thresholds used in 25Sep17 variants, coming from here:
+// https://indico.cern.ch/event/1475489/contributions/6216571/attachments/2961918/5209794/Run3Winter25_MC_Nov6_2024.pdf?#page=13
+// Correct 2025 reported two days later at:
+// https://indico.cern.ch/event/1475724/contributions/6214787/attachments/2963805/5226226/Winter25_MC_Nov8_2024.pdf#page=11
+double threshold(int subdet, int ieta, int depth, int form) {
   double cutHE[4][7] = {{0.1, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2},  // 2022
 			{0.1, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2},  // 2023
 			{0.1, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2},  // 2024
-			{0.2, 0.5, 0.5, 0.3, 0.3, 0.3, 0.3}}; // 2025
+			//{0.2, 0.5, 0.5, 0.3, 0.3, 0.3, 0.3}}; // 2025 - wrong
+			{0.2, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3}}; // 2025 - new
   double cutHB[4][4] = {{0.1,  0.2,  0.3, 0.3},  // 2022
 			{0.25, 0.25, 0.3, 0.3},  // 2023
 			{0.4,  0.3,  0.3, 0.3},  // 2024
-			{0.6,  0.5,  0.5, 0.6}}; // 2025
+			//{0.6,  0.5,  0.5, 0.6}}; // 2025 - wrong
+			{0.6,  0.4,  0.4, 0.5}}; // 2025 - new
+  
+  // Manual override for ieta=16,17 special cases in 2025 - new :
+  // https://indico.cern.ch/event/1475724/contributions/6214787/attachments/2963805/5226226/Winter25_MC_Nov8_2024.pdf#page=20 (or Yildiray's table if different)
+  if (form==4) {
+    if (abs(ieta)==16 && depth==1) return 1.2;
+    if (abs(ieta)==16 && depth==2) return 0.4; // source: Yildiray, Oct 29
+    if (abs(ieta)==16 && depth==3) return 0.4; // source: Yildiray, Oct 29
+    if (abs(ieta)==16 && depth==4) return 0.5; // source: Yildiray, Oct 29
+    if (abs(ieta)==17 && depth==2) return 0.5;
+    if (abs(ieta)==17 && depth==3) return 0.5;
+  }
+  
   double thr(0);
   if (form > 0) {
     if (subdet == 2)
@@ -265,9 +289,11 @@ double threshold(int subdet, int depth, int form) {
 }
 
 double threshold(unsigned int detId, int form) {
-  int subdet = ((detId >> 25) & (0x7));
-  int depth = ((detId & 0x1000000) == 0) ? ((detId >> 14) & 0x1F) : ((detId >> 20) & 0xF);
-  return threshold(subdet, depth, form);
+  //int subdet = ((detId >> 25) & (0x7));
+  //int depth = ((detId & 0x1000000) == 0) ? ((detId >> 14) & 0x1F) : ((detId >> 20) & 0xF);
+  int subdet, zside, ieta, iphi, depth;
+  unpackDetId(detId, subdet, zside, ieta, iphi, depth);
+  return threshold(subdet, (zside*ieta), depth, form);
 }
 
 double puFactor(int type, int ieta, double pmom, double eHcal, double ediff, bool debug = false) {
@@ -576,6 +602,101 @@ std::vector<std::string> splitString(const std::string& fLine) {
     }
   }
   return result;
+}
+
+class CalibThreshold {
+public:
+  CalibThreshold(int form);
+  ~CalibThreshold() {}
+
+  double threshold(unsigned int detId);
+
+private:
+  double threshold(int subdet, int ieta, int depth);
+  bool fileThreshold(const char* fname);
+
+  int form_;
+  std::map<std::pair<int, int>, double> thresh_;
+  bool ok_;
+};
+
+CalibThreshold::CalibThreshold(int form) : form_(form) {
+  if (form_ == 6)
+    ok_ = fileThreshold("textfiles/PFCuts362975.txt");
+  else if (form_ == 5)
+    ok_ = fileThreshold("textfiles/PFCuts2025.txt");
+  else if ((form_ < 1) || (form_ > 6))
+    ok_ = false;
+  else
+    ok_ = true;
+  std::cout << "CalibThreshold initialized with flag " << ok_ << " for form " << form_ << std::endl;
+}
+
+bool CalibThreshold::fileThreshold(const char* fname) {
+  bool ok(false);
+  if (std::string(fname) != "") {
+    std::ifstream fInput(fname);
+    if (!fInput.good()) {
+      std::cout << "Cannot open file " << fname << std::endl;
+    } else {
+      char buffer[1024];
+      unsigned int all(0), good(0), bad(0);
+      while (fInput.getline(buffer, 1024)) {
+        ++all;
+        if (buffer[0] == '#')
+          continue;  //ignore comment
+        std::vector<std::string> items = splitString(std::string(buffer));
+        if (items.size() != 7) {
+          ++bad;
+          std::cout << "Ignore  line: " << buffer << std::endl;
+        } else {
+          ++good;
+          int ieta = std::atoi(items[0].c_str());
+          int depth = std::atoi(items[2].c_str());
+          double thr = std::atof(items[4].c_str());
+          thresh_[std::pair<int, int>(ieta, depth)] = thr;
+        }
+      }
+      fInput.close();
+      std::cout << "Reads " << all << " entries from " << fname << " with " << good << " Good and " << bad
+                << " bad records" << std::endl;
+      if (good > 0)
+        ok = true;
+    }
+  }
+  return ok;
+}
+
+double CalibThreshold::threshold(int subdet, int ieta, int depth) {
+  double cutHE[4][7] = {{0.1, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2},  // 2022
+                        {0.1, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2},  // 2023
+                        {0.1, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2},  // 2024
+                        {0.2, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3}}; // 2025 wrong
+  double cutHB[4][4] = {{0.1, 0.2, 0.3, 0.3},   // 2022
+			{0.25, 0.25, 0.3, 0.3}, // 2023
+			{0.4, 0.3, 0.3, 0.3},   // 2024
+			{0.6, 0.4, 0.4, 0.5}};  // 2025 wrong
+
+  double thr(0);
+  if (ok_) {
+    if ((form_ > 0) && (form_ <= 4)) {
+      if (subdet == 2)
+        thr = cutHE[form_ - 1][depth - 1];
+      else
+        thr = cutHB[form_ - 1][depth - 1];
+    } else {
+      std::map<std::pair<int, int>, double>::const_iterator itr = thresh_.find(std::pair<int, int>(ieta, depth));
+      if (itr != thresh_.end())
+        thr = itr->second;
+    }
+  }
+  return thr;
+}
+
+double CalibThreshold::threshold(unsigned int detId) {
+  int subdet, zside, ieta, iphi, depth;
+  unpackDetId(detId, subdet, zside, ieta, iphi, depth);
+  return threshold(subdet, (zside * ieta), depth);
 }
 
 class CalibCorrFactor {
